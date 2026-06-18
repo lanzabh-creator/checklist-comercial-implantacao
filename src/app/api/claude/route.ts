@@ -9,8 +9,11 @@ export async function POST(req: NextRequest) {
     const { prompt, useWebSearch = false, maxTokens = 2000 } = body
 
     const tools = useWebSearch
-      ? [{ type: 'web_search_20250305' as const, name: 'web_search' }]
-      : []
+  ? [{
+      type: 'web_search_20250305' as const,
+      name: 'web_search' as const
+    }]
+  : []
 
     const response = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
