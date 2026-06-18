@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
       .map((b) => (b as Anthropic.TextBlock).text)
       .join('\n')
 
-    return NextResponse.json({ text })
+    console.error('Claude API Error:', err)
+    return NextResponse.json({ error: message }, { status: 500 })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erro desconhecido'
     return NextResponse.json({ error: message }, { status: 500 })
