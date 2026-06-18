@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { prompt, useWebSearch = false, maxTokens = 2000 } = body
 
-    const tools: Anthropic.Tool[] = useWebSearch
+    const tools: = useWebSearch
       ? [{ type: 'web_search_20250305' as const, name: 'web_search' }]
       : []
 
