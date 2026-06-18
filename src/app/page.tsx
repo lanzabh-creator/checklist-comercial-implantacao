@@ -117,53 +117,98 @@ export default function Home() {
   }
 
   const doSefaz = async () => {
-    const raw = sefazCnpj.replace(/\D/g, '')
-    if (raw.length !== 14) { alert('Informe um CNPJ com 14 dígitos.'); return }
-    const fmt = raw.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
-    setSefazLoading(true); setSefazResult(null)
-    try {
-      const prompt = `Consulte os dados cadastrais e fiscais da empresa com o CNPJ ${fmt} na Receita Federal do Brasil. Busque nas fontes oficiais e públicas e retorne EXATAMENTE neste formato JSON, sem texto adicional, sem markdown:\n{"razao_social":"","nome_fantasia":"","situacao_cadastral":"","porte":"","natureza_juridica":"","capital_social":"","atividade_principal_descricao":"","data_abertura":"","municipio":"","uf":"","email":"","telefone":"","socios":"","simples_nacional":"","total_filiais":"","regime_tributario":"","contabilidade_tipo":"","possui_holding":"","documentos_fiscais_emitidos":"","operacoes_nf_modelo_55":""}\nInstruções: total_filiais=número total de CNPJs/filiais (se só matriz retorne "1"). regime_tributario=liste separado por vírgula usando: Simples Nacional, Lucro Presumido, Lucro Real, Misto. contabilidade_tipo=Interna/Externa/Mista. possui_holding=Sim/Não. documentos_fiscais_emitidos=lista de: NFC-e, NF-e modelo 55, MDF-e, CT-e. operacoes_nf_modelo_55=lista de: Venda, Transferência, Industrialização, Produção própria, Marketplace. Use "Não encontrado" para campos sem informação. Retorne SOMENTE o JSON.`
-      const text = await callClaude(prompt, true, 1000)
-      let d: Record<string,string> | null = null
-      try { const clean = text.replace(/```json|```/g,'').trim(); d = JSON.parse(clean) } catch { const m = text.match(/\{[\s\S]*\}/); if (m) try { d = JSON.parse(m[0]) } catch {} }
-      if (!d) throw new Error('parse failed')
-      setSefazResult(d)
-      setField('cnpj', fmt)
-      if (!fd['razao_social'] && d['razao_social'] && d['razao_social'] !== 'Não encontrado') setField('razao_social', d['razao_social'])
-      // auto-fill
-      if (d['total_filiais']) { const n = parseInt(d['total_filiais']) || 1; setField('qtd_cnpjs', String(n)) }
-      if (d['regime_tributario']) {
-        const REGIMES = ['Simples Nacional','Lucro Presumido','Lucro Real','Misto']
-        const raw2 = d['regime_tributario'].toLowerCase()
-        const matched = REGIMES.filter(r => raw2.includes(r.toLowerCase()))
-        if (matched.length) setField('regime', matched)
-      }
-      if (d['contabilidade_tipo']) {
-        const raw2 = d['contabilidade_tipo'].toLowerCase()
-        const val = raw2.includes('interna') ? 'Interna' : raw2.includes('externa') ? 'Externa' : raw2.includes('mista') ? 'Mista' : ''
-        if (val) setField('contabilidade', val)
-      }
-      if (d['possui_holding']) {
-        const raw2 = d['possui_holding'].toLowerCase()
-        if (raw2 === 'sim') setField('holding', 'Sim')
-        else if (raw2 === 'não' || raw2 === 'nao') setField('holding', 'Não')
-      }
-      if (d['documentos_fiscais_emitidos']) {
-        const VALID = ['NFC-e','NF-e modelo 55','MDF-e','CT-e']
-        const raw2 = d['documentos_fiscais_emitidos'].toLowerCase()
-        const m = VALID.filter(doc => raw2.includes(doc.toLowerCase().replace('-e','e').replace('-','')) || raw2.includes(doc.toLowerCase()))
-        if (m.length) setField('docs_fiscais', m)
-      }
-      if (d['operacoes_nf_modelo_55']) {
-        const VALID = ['Venda','Transferência','Industrialização','Produção própria','Marketplace']
-        const raw2 = d['operacoes_nf_modelo_55'].toLowerCase()
-        const m = VALID.filter(op => raw2.includes(op.toLowerCase()))
-        if (m.length) setField('ops_fiscais', m)
-      }
-    } catch { alert('CNPJ não encontrado ou serviço indisponível.') }
-    setSefazLoading(false)
+  const raw = sefazCnpj.replace(/\D/g, '')
+
+  if (raw.length !== 14) {
+    alert('Informe um CNPJ com 14 dígitos.')
+    return
   }
 
+  const fmt = raw.replace(
+    /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
+    '$1.$2.$3/$4-$5'
+  )
+
+  setSefazLoading(true)
+  setSefazResult(null)
+
+  try {
+    const response = await fetch(
+      `https://brasilapi.com.br/api/cnpj/v1/${raw}`
+    )
+
+    if (!response.ok) {
+      throw new Error('CNPJ não encontrado')
+    }
+
+    const empresa = await response.json()
+
+    const d: Record<string, string> = {
+      razao_social: empresa.razao_social || '',
+      nome_fantasia: empresa.nome_fantasia || '',
+      situacao_cadastral:
+        empresa.descricao_situacao_cadastral || '',
+      porte: empresa.porte || '',
+      natureza_juridica:
+        empresa.natureza_juridica || '',
+      capital_social:
+        String(empresa.capital_social || ''),
+      atividade_principal_descricao:
+        empresa.cnae_fiscal_descricao || '',
+      data_abertura:
+        empresa.data_inicio_atividade || '',
+      municipio: empresa.municipio || '',
+      uf: empresa.uf || '',
+      email: empresa.email || '',
+      telefone: empresa.ddd_telefone_1 || '',
+
+      socios:
+        empresa.qsa
+          ?.map((s: any) => s.nome_socio)
+          .join(', ') || '',
+
+      simples_nacional: 'Não informado',
+      total_filiais: '1',
+      regime_tributario: 'Não encontrado',
+      contabilidade_tipo: 'Não encontrado',
+      possui_holding: 'Não encontrado',
+      documentos_fiscais_emitidos:
+        'Não encontrado',
+      operacoes_nf_modelo_55:
+        'Não encontrado',
+    }
+
+    setSefazResult(d)
+
+    setField('cnpj', fmt)
+
+    if (
+      !fd['razao_social'] &&
+      d['razao_social']
+    ) {
+      setField(
+        'razao_social',
+        d['razao_social']
+      )
+    }
+
+    if (d['total_filiais']) {
+      const n =
+        parseInt(d['total_filiais']) || 1
+
+      setField('qtd_cnpjs', String(n))
+    }
+  } catch (err) {
+    console.error(err)
+
+    alert(
+      'CNPJ não encontrado ou serviço indisponível.'
+    )
+  }
+
+  setSefazLoading(false)
+}
+  
   const generateReport = async () => {
     if (!def) return
     setPage('report'); setLoading(true); setReportHtml(''); setReportMd('')
