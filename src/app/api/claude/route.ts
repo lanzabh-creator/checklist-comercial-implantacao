@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       : []
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-3-5-sonnet-latest',
       max_tokens: maxTokens,
       ...(tools.length > 0 ? { tools } : {}),
       messages: [
