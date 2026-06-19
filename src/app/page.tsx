@@ -152,11 +152,6 @@ export default function Home() {
     localStorage.removeItem('tk_fd')
     localStorage.setItem('tk_sec', '0')
   }
-      const v = fd[f.id]
-      if (v !== undefined && v !== null && (Array.isArray(v) ? v.length > 0 : String(v).trim() !== '' && v !== 'Selecione')) sf++
-    })
-    return sf > 0 && sf === st
-  }
 
   // ── AI calls ──────────────────────────────────────────────
   const doResearch = async () => {
