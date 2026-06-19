@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { DEFS, Field } from '@/lib/defs'
 
 // ── helpers ──────────────────────────────────────────────
@@ -47,9 +47,19 @@ type FDValue = string | string[]
 type FormData = Record<string, FDValue>
 
 export default function Home() {
-  const [cl, setCl] = useState<string | null>(null)
-  const [sec, setSec] = useState(0)
-  const [fd, setFd] = useState<FormData>({})
+  // ── Inicializa estado a partir do localStorage ────────────
+  const [cl, setCl] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    return localStorage.getItem('tk_cl') || null
+  })
+  const [sec, setSec] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0
+    return parseInt(localStorage.getItem('tk_sec') || '0') || 0
+  })
+  const [fd, setFd] = useState<FormData>(() => {
+    if (typeof window === 'undefined') return {}
+    try { return JSON.parse(localStorage.getItem('tk_fd') || '{}') } catch { return {} }
+  })
   const [page, setPage] = useState<'checklist'|'report'>('checklist')
   const [reportHtml, setReportHtml] = useState('')
   const [reportMd, setReportMd] = useState('')
@@ -98,6 +108,50 @@ export default function Home() {
     s.fields.forEach(f => {
       if (f.type === 'pdf_upload') return
       st++
+      const v = fd[f.id]
+      if (v !== undefined && v !== null && (Array.isArray(v) ? v.length > 0 : String(v).trim() !== '' && v !== 'Selecione')) sf++
+    })
+    return sf > 0 && sf === st
+  }
+
+  // ── Persistência no localStorage ─────────────────────────
+  useEffect(() => {
+    if (cl) localStorage.setItem('tk_cl', cl)
+    else localStorage.removeItem('tk_cl')
+  }, [cl])
+
+  useEffect(() => {
+    if (cl) localStorage.setItem(`tk_sec_${cl}`, String(sec))
+    localStorage.setItem('tk_sec', String(sec))
+  }, [sec, cl])
+
+  useEffect(() => {
+    if (!cl) return
+    try {
+      const fdSafe = Object.fromEntries(
+        Object.entries(fd).filter(([k, v]) =>
+          !k.endsWith('_upload') && !(typeof v === 'string' && v.startsWith('data:'))
+        )
+      )
+      localStorage.setItem(`tk_fd_${cl}`, JSON.stringify(fdSafe))
+      localStorage.setItem('tk_fd', JSON.stringify(fdSafe))
+    } catch { /* quota excedida */ }
+  }, [fd, cl])
+
+  // ── Reiniciar checklist ───────────────────────────────────
+  const resetChecklist = () => {
+    if (!confirm('Tem certeza que deseja reiniciar o checklist? Todos os dados preenchidos serão apagados.')) return
+    setFd({})
+    setSec(0)
+    setSefazResult(null)
+    setSefazCnpj('')
+    if (cl) {
+      localStorage.removeItem(`tk_fd_${cl}`)
+      localStorage.removeItem(`tk_sec_${cl}`)
+    }
+    localStorage.removeItem('tk_fd')
+    localStorage.setItem('tk_sec', '0')
+  }
       const v = fd[f.id]
       if (v !== undefined && v !== null && (Array.isArray(v) ? v.length > 0 : String(v).trim() !== '' && v !== 'Selecione')) sf++
     })
@@ -906,7 +960,22 @@ select option{background:#03004F;color:#fff;}
               <div className="sb-lbl">Tipo de Checklist</div>
               <div className="cl-sel">
                 {Object.entries(DEFS).map(([key, d]) => (
-                  <button key={key} className={`cl-btn${cl===key?' active':''}`} onClick={() => { setCl(key); setSec(0); setFd({}); setSidebarOpen(false) }}>
+                  <button key={key} className={`cl-btn${cl===key?' active':''}`} onClick={() => {
+                    // Salva dados do checklist atual antes de trocar
+                    if (cl && cl !== key) {
+                      try {
+                        const fdSafe = Object.fromEntries(Object.entries(fd).filter(([k,v]) => !k.endsWith('_upload') && !(typeof v === 'string' && v.startsWith('data:'))))
+                        localStorage.setItem(`tk_fd_${cl}`, JSON.stringify(fdSafe))
+                      } catch {}
+                    }
+                    // Restaura dados do checklist selecionado (se existirem)
+                    try {
+                      const saved = localStorage.getItem(`tk_fd_${key}`)
+                      setFd(saved ? JSON.parse(saved) : {})
+                    } catch { setFd({}) }
+                    const savedSec = parseInt(localStorage.getItem(`tk_sec_${key}`) || '0') || 0
+                    setCl(key); setSec(savedSec); setSidebarOpen(false); setSefazResult(null); setSefazCnpj('')
+                  }}>
                     <span className="cl-icon">{key==='retail'?'🍔':key==='erp'?'🏭':'🍽️'}</span>
                     <span className="cl-info"><span className="cl-name">{d.label}</span><span className="cl-desc">{key==='retail'?'Restaurantes, Redes, Franquias':key==='erp'?'Indústrias, Distribuidores':'Nutrição, Hospitalar, Cozinhas'}</span></span>
                   </button>
@@ -951,9 +1020,47 @@ select option{background:#03004F;color:#fff;}
             ) : (
               <div className="form-area">
                 <div className="sec-hdr">
-                  <div className="sec-num">SEÇÃO {String(sec+1).padStart(2,'00')} / {sections.length} — {def?.label}</div>
-                  <h2 className="sec-ttl">{currentSec?.title}</h2>
-                  <p className="sec-dsc">{currentSec?.desc}</p>
+                  <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12 }}>
+                    <div>
+                      <div className="sec-num">SEÇÃO {String(sec+1).padStart(2,'00')} / {sections.length} — {def?.label}</div>
+                      <h2 className="sec-ttl">{currentSec?.title}</h2>
+                      <p className="sec-dsc">{currentSec?.desc}</p>
+                    </div>
+                    <button
+                      onClick={resetChecklist}
+                      title="Reiniciar checklist"
+                      style={{
+                        flexShrink: 0,
+                        marginTop: 2,
+                        background: 'transparent',
+                        border: '1px solid rgba(232,77,77,.35)',
+                        borderRadius: 6,
+                        color: 'rgba(232,77,77,.7)',
+                        fontFamily: "'Poppins',sans-serif",
+                        fontSize: 10,
+                        fontWeight: 600,
+                        padding: '5px 10px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        whiteSpace: 'nowrap',
+                        transition: 'all .15s',
+                      }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(232,77,77,.1)'
+                        ;(e.currentTarget as HTMLButtonElement).style.borderColor = '#e84d4d'
+                        ;(e.currentTarget as HTMLButtonElement).style.color = '#e84d4d'
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                        ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(232,77,77,.35)'
+                        ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(232,77,77,.7)'
+                      }}
+                    >
+                      🔄 Reiniciar
+                    </button>
+                  </div>
                 </div>
 
                 {/* RESEARCH BANNER */}
