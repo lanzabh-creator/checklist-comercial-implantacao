@@ -324,6 +324,194 @@ export default function Home() {
     setSefazLoading(false)
   }
 
+  const [checklistPdfLoading, setChecklistPdfLoading] = useState(false)
+
+  const exportChecklistPDF = async () => {
+    if (!def) return
+    setChecklistPdfLoading(true)
+    const client = String(fd['razao_social'] || 'Cliente')
+    const date = new Date().toLocaleDateString('pt-BR')
+
+    // ── 1. Monta contexto com campos preenchidos ──────────────
+    let ctx = ''
+    def.sections.forEach(s => {
+      const filled = s.fields.filter(f => {
+        const v = fd[f.id]
+        return v && (Array.isArray(v) ? v.length > 0 : String(v).trim() !== '' && v !== 'Selecione')
+      })
+      if (filled.length === 0) return
+      ctx += `\n### ${s.title}\n`
+      filled.forEach(f => {
+        const v = fd[f.id]
+        ctx += `- ${f.label}: ${Array.isArray(v) ? v.join(', ') : v}\n`
+      })
+    })
+
+    // ── 2. Gera análise de riscos via Claude ──────────────────
+    let analise = ''
+    try {
+      const prompt = `Você é um especialista em implantação de sistemas Teknisa para food service, indústrias e serviços de alimentação.
+
+Com base nos dados do checklist abaixo, gere uma ANÁLISE DE RISCOS E PONTOS DE ATENÇÃO para a equipe de implantação. Seja direto, prático e específico.
+
+CLIENTE: ${client}
+CHECKLIST: ${def.label}
+${ctx}
+
+Estruture sua resposta em exatamente estas seções (use os títulos abaixo):
+
+## CLASSIFICAÇÃO DE RISCO GERAL
+[Uma linha: Baixo / Médio / Alto — com justificativa de 2-3 linhas baseada nos dados]
+
+## RISCOS CRÍTICOS IDENTIFICADOS
+[Liste de 3 a 6 riscos reais com base nos dados. Para cada um:
+• Nome do risco
+• Por que é um risco neste cliente
+• Como mitigar]
+
+## PONTOS DE ATENÇÃO TÉCNICA
+[Liste de 3 a 5 pontos específicos para a equipe técnica de implantação, como: integrações críticas, configurações fiscais especiais, infraestrutura, volume de dados, customizações prometidas etc.]
+
+## PONTOS DE ATENÇÃO OPERACIONAL
+[Liste de 3 a 5 pontos para a equipe de treinamento e go-live: maturidade da equipe do cliente, processos não documentados, resistência esperada, dados a migrar, operações que não podem parar etc.]
+
+## RECOMENDAÇÕES PARA O KICK-OFF
+[3 a 5 ações concretas que o líder de implantação deve executar nas primeiras semanas]
+
+## CHECKLIST DE VALIDAÇÃO PRÉ GO-LIVE
+[Liste de 8 a 12 itens que devem ser validados antes da entrada em produção, específicos para este cliente]
+
+Seja específico com os dados do cliente. Evite generalidades. Tom técnico e direto.`
+
+      analise = await callClaude(prompt, false, 2000)
+    } catch {
+      analise = 'Não foi possível gerar a análise automática. Verifique sua conexão e a chave de API.'
+    }
+
+    // ── 3. Converte análise markdown → HTML simplificado ──────
+    const analiseHtml = analise.split('\n').map(l => {
+      if (/^## /.test(l)) return `<h2 class="sec-h2">${l.replace(/^## /,'')}</h2>`
+      if (/^### /.test(l)) return `<h3 class="sec-h3">${l.replace(/^### /,'')}</h3>`
+      if (/^[-•] /.test(l)) return `<div class="li">${l.replace(/^[-•] /,'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</div>`
+      if (l.trim() === '') return '<div class="gap"></div>'
+      return `<p>${l.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>')}</p>`
+    }).join('')
+
+    // ── 4. Monta HTML dos campos preenchidos ──────────────────
+    let fieldsHtml = ''
+    def.sections.forEach(s => {
+      const filled = s.fields.filter(f => {
+        const v = fd[f.id]
+        return v && (Array.isArray(v) ? v.length > 0 : String(v).trim() !== '' && v !== 'Selecione')
+      })
+      if (filled.length === 0) return
+      fieldsHtml += `<div class="section-block">
+        <div class="section-title">${s.title}</div>
+        <table class="fields-table">`
+      filled.forEach(f => {
+        const v = fd[f.id]
+        const val = Array.isArray(v) ? v.join(', ') : String(v)
+        fieldsHtml += `<tr><td class="field-label">${f.label}</td><td class="field-value">${val}</td></tr>`
+      })
+      fieldsHtml += `</table></div>`
+    })
+
+    // ── 5. Abre janela de impressão ───────────────────────────
+    const w = window.open('', '_blank')
+    if (!w) { setChecklistPdfLoading(false); return }
+
+    const risco = String(fd['risco'] || '—')
+    const riscoColor = risco === 'Alto' ? '#c0392b' : risco === 'Médio' ? '#e67e22' : '#27ae60'
+
+    w.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Checklist — ${client}</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Roboto',Arial,sans-serif;font-size:12px;color:#1a1a2e;background:#fff;line-height:1.5;}
+.wrap{max-width:820px;margin:0 auto;padding:32px 40px 60px;}
+
+/* CAPA */
+.cover{background:linear-gradient(135deg,#030268,#040486);color:#fff;padding:40px;border-radius:12px;margin-bottom:32px;page-break-inside:avoid;}
+.cover-logo{font-family:'Poppins',sans-serif;font-size:13px;font-weight:800;letter-spacing:3px;text-transform:uppercase;opacity:.7;margin-bottom:24px;}
+.cover-title{font-family:'Poppins',sans-serif;font-size:26px;font-weight:800;line-height:1.2;margin-bottom:6px;}
+.cover-sub{font-size:13px;opacity:.7;margin-bottom:24px;}
+.cover-meta{display:flex;gap:24px;flex-wrap:wrap;}
+.cover-field{display:flex;flex-direction:column;gap:2px;}
+.cover-field-label{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;opacity:.5;}
+.cover-field-value{font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;}
+.risco-badge{display:inline-block;padding:3px 12px;border-radius:20px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);}
+
+/* SEPARADOR DE PARTES */
+.part-header{font-family:'Poppins',sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:#040486;border-bottom:2px solid #040486;padding-bottom:8px;margin:32px 0 20px;}
+
+/* CAMPOS DO CHECKLIST */
+.section-block{margin-bottom:20px;page-break-inside:avoid;}
+.section-title{font-family:'Poppins',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#555;background:#f5f5f8;padding:6px 10px;border-left:3px solid #040486;margin-bottom:0;}
+.fields-table{width:100%;border-collapse:collapse;}
+.fields-table tr{border-bottom:1px solid #eee;}
+.fields-table tr:last-child{border-bottom:none;}
+.field-label{width:42%;padding:7px 10px;font-size:11px;color:#666;vertical-align:top;font-weight:500;}
+.field-value{width:58%;padding:7px 10px;font-size:11px;color:#1a1a2e;vertical-align:top;font-weight:400;}
+
+/* ANÁLISE DE RISCOS */
+.sec-h2{font-family:'Poppins',sans-serif;font-size:12px;font-weight:700;color:#030268;text-transform:uppercase;letter-spacing:1px;margin:20px 0 8px;padding:8px 12px;background:#f0f0fa;border-left:4px solid #040486;}
+.sec-h3{font-family:'Poppins',sans-serif;font-size:10px;font-weight:700;color:#333;text-transform:uppercase;letter-spacing:.8px;margin:12px 0 5px;}
+.li{display:flex;gap:8px;padding:3px 0;font-size:11.5px;color:#333;line-height:1.6;}
+.li::before{content:'›';color:#040486;flex-shrink:0;font-weight:900;font-size:13px;margin-top:1px;}
+.gap{height:6px;}
+p{font-size:11.5px;color:#333;line-height:1.65;margin-bottom:5px;}
+strong{color:#1a1a2e;font-weight:700;}
+
+/* RODAPÉ */
+.footer{margin-top:40px;padding-top:14px;border-top:1px solid #ddd;display:flex;justify-content:space-between;font-size:9px;color:#aaa;}
+@media print{
+  .section-block{page-break-inside:avoid;}
+  .sec-h2{page-break-after:avoid;}
+  body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- CAPA -->
+  <div class="cover">
+    <div class="cover-logo">TEKNISA · Intelligence Comercial</div>
+    <div class="cover-title">Checklist Comercial<br>de Implantação</div>
+    <div class="cover-sub">${def.label}</div>
+    <div class="cover-meta">
+      <div class="cover-field"><span class="cover-field-label">Cliente</span><span class="cover-field-value">${client}</span></div>
+      <div class="cover-field"><span class="cover-field-label">Data</span><span class="cover-field-value">${date}</span></div>
+      <div class="cover-field"><span class="cover-field-label">Preenchimento</span><span class="cover-field-value">${pct}%</span></div>
+      <div class="cover-field"><span class="cover-field-label">Risco Global</span><span class="cover-field-value"><span class="risco-badge" style="color:${riscoColor}">${risco}</span></span></div>
+    </div>
+  </div>
+
+  <!-- PARTE 1: CAMPOS PREENCHIDOS -->
+  <div class="part-header">Parte 1 — Dados do Checklist Preenchido</div>
+  ${fieldsHtml || '<p style="color:#999">Nenhum campo preenchido.</p>'}
+
+  <!-- PARTE 2: ANÁLISE DE RISCOS -->
+  <div class="part-header">Parte 2 — Análise de Riscos e Pontos de Atenção para Implantação</div>
+  ${analiseHtml}
+
+  <div class="footer">
+    <span>Teknisa — Intelligence Comercial · Checklist de Implantação</span>
+    <span>${client} · ${date}</span>
+  </div>
+
+</div>
+<script>setTimeout(()=>window.print(),800);<\/script>
+</body>
+</html>`)
+    w.document.close()
+    setChecklistPdfLoading(false)
+  }
+
   const generateReport = async () => {
     if (!def) return
     setPage('report'); setLoading(true); setReportHtml(''); setReportMd('')
@@ -817,7 +1005,17 @@ select option{background:#03004F;color:#fff;}
                 <div className="form-nav">
                   <button className="btn btn-ghost" disabled={sec === 0} onClick={() => setSec(s => s - 1)}>← Anterior</button>
                   {sec === sections.length - 1
-                    ? <button className="btn btn-gen" onClick={generateReport}>✨ Gerar Relatório Estratégico</button>
+                    ? <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
+                        <button
+                          className="btn"
+                          style={{ background:'rgba(4,4,134,.6)', border:'1px solid rgba(4,4,134,.9)', color:'#fff', fontSize:13, fontWeight:700 }}
+                          onClick={exportChecklistPDF}
+                          disabled={checklistPdfLoading}
+                        >
+                          {checklistPdfLoading ? '⏳ Gerando PDF...' : '📋 Exportar Checklist PDF'}
+                        </button>
+                        <button className="btn btn-gen" onClick={generateReport}>✨ Gerar Relatório Estratégico</button>
+                      </div>
                     : <button className="btn btn-pri" onClick={() => setSec(s => s + 1)}>Próximo →</button>
                   }
                 </div>
