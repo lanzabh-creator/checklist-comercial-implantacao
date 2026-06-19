@@ -105,110 +105,224 @@ export default function Home() {
 
   // ── AI calls ──────────────────────────────────────────────
   const doResearch = async () => {
-    const nome = String(fd['razao_social'] || ''), cnpj = String(fd['cnpj'] || ''), site = String(fd['site'] || ''), li = String(fd['linkedin'] || ''), ig = String(fd['instagram'] || '')
-    if (!nome && !cnpj && !site) { alert('Preencha ao menos o nome ou CNPJ antes de pesquisar.'); return }
+    const nome = String(fd['razao_social'] || '')
+    const cnpjRaw = String(fd['cnpj'] || '').replace(/\D/g, '')
+    const site = String(fd['site'] || '')
+    if (!nome && !cnpjRaw && !site) { alert('Preencha ao menos o nome ou CNPJ antes de pesquisar.'); return }
     setResearchLoading(true)
     try {
-      const prompt = `Você é um analista de inteligência comercial. Pesquise e consolide todas as informações públicas sobre esta empresa brasileira:\nNome: ${nome} | CNPJ: ${cnpj} | Site: ${site} | LinkedIn: ${li} | Instagram: ${ig}\nLevante em tópicos: 1.Histórico/fundação 2.Nº funcionários 3.Faturamento anual 4.EBITDA/lucro 5.Unidades/lojas/contratos 6.Produtos e serviços 7.Segmentos atendidos 8.Presença geográfica 9.Expansão recente 10.Estrutura societária 11.Certificações/prêmios 12.Notícias últimos 12 meses 13.Concorrentes diretos 14.Pontos de dor e oportunidades estratégicas. Responda em português, objetivo. Se não encontrar: "Não localizado".`
-      const text = await callClaude(prompt, true, 2000)
-      setField('research_extra', text)
-    } catch (e) { alert('Erro na pesquisa. Tente novamente.') }
+      const lines: string[] = []
+
+      // ── 1. BrasilAPI CNPJ (gratuita, sem autenticação) ──
+      if (cnpjRaw.length === 14) {
+        try {
+          const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjRaw}`)
+          if (r.ok) {
+            const d = await r.json()
+            lines.push('## Dados da Receita Federal')
+            lines.push(`Razão Social: ${d.razao_social || '—'}`)
+            lines.push(`Nome Fantasia: ${d.nome_fantasia || '—'}`)
+            lines.push(`Situação Cadastral: ${d.descricao_situacao_cadastral || '—'}`)
+            lines.push(`Porte: ${d.porte || '—'}`)
+            lines.push(`Natureza Jurídica: ${d.natureza_juridica || '—'}`)
+            lines.push(`Capital Social: R$ ${Number(d.capital_social || 0).toLocaleString('pt-BR')}`)
+            lines.push(`Atividade Principal (CNAE ${d.cnae_fiscal}): ${d.cnae_fiscal_descricao || '—'}`)
+            lines.push(`Data de Abertura: ${d.data_inicio_atividade || '—'}`)
+            lines.push(`Município / UF: ${d.municipio || '—'} / ${d.uf || '—'}`)
+            lines.push(`Endereço: ${[d.logradouro, d.numero, d.bairro, d.cep].filter(Boolean).join(', ') || '—'}`)
+            lines.push(`E-mail: ${d.email || '—'}`)
+            lines.push(`Telefone: ${d.ddd_telefone_1 || '—'}`)
+            if (d.qsa?.length) {
+              lines.push(`Quadro Societário: ${d.qsa.map((s: Record<string,string>) => `${s.nome_socio} (${s.qualificacao_socio})`).join('; ')}`)
+            }
+            // Atividades secundárias
+            if (d.cnaes_secundarios?.length) {
+              lines.push(`Atividades Secundárias: ${d.cnaes_secundarios.slice(0, 3).map((c: Record<string,string>) => c.descricao).join('; ')}`)
+            }
+            // Auto-preenche razão social se vazio
+            if (!fd['razao_social'] && d.razao_social) {
+              setField('razao_social', d.razao_social)
+            }
+          }
+        } catch {}
+      }
+
+      // ── 2. BrasilAPI Simples Nacional ───────────────────
+      if (cnpjRaw.length === 14) {
+        try {
+          const r = await fetch(`https://brasilapi.com.br/api/simples/v1/${cnpjRaw}`)
+          if (r.ok) {
+            const d = await r.json()
+            lines.push('')
+            lines.push('## Simples Nacional / MEI')
+            lines.push(`Optante Simples Nacional: ${d.simples?.optante ? 'Sim' : 'Não'}`)
+            lines.push(`Data de Opção: ${d.simples?.data_opcao || '—'}`)
+            lines.push(`Optante MEI: ${d.mei?.optante ? 'Sim' : 'Não'}`)
+          }
+        } catch {}
+      }
+
+      // ── 3. Google News RSS (público, sem autenticação) ──
+      if (nome) {
+        try {
+          const query = encodeURIComponent(`"${nome}"`)
+          const rssUrl = `https://news.google.com/rss/search?q=${query}&hl=pt-BR&gl=BR&ceid=BR:pt-419`
+          // Usa proxy CORS público para ler o RSS
+          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`
+          const r = await fetch(proxyUrl)
+          if (r.ok) {
+            const data = await r.json()
+            const xml = data.contents as string
+            // Extrai títulos e fontes dos itens do RSS
+            const items = [...xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<source[^>]*>([\s\S]*?)<\/source>[\s\S]*?<pubDate>([\s\S]*?)<\/pubDate>[\s\S]*?<\/item>/g)]
+            if (items.length > 0) {
+              lines.push('')
+              lines.push('## Notícias Recentes (Google News)')
+              items.slice(0, 8).forEach(m => {
+                const title = m[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/&amp;/g,'&').replace(/&quot;/g,'"').trim()
+                const source = m[2].replace(/<!\[CDATA\[|\]\]>/g, '').trim()
+                const date = m[3].trim()
+                lines.push(`• ${title} — ${source} (${date})`)
+              })
+            } else {
+              lines.push('')
+              lines.push('## Notícias Recentes')
+              lines.push('Nenhuma notícia recente encontrada no Google News.')
+            }
+          }
+        } catch {}
+      }
+
+      // ── 4. Campos complementares de orientação ──────────
+      lines.push('')
+      lines.push('## Observações para Preenchimento Manual')
+      lines.push('Os campos abaixo precisam ser levantados diretamente com o cliente:')
+      lines.push('• Número de funcionários / colaboradores')
+      lines.push('• Faturamento anual detalhado (se não divulgado)')
+      lines.push('• Estrutura de TI e sistemas utilizados')
+      lines.push('• Expansão planejada')
+      lines.push('• Concorrentes diretos identificados pelo cliente')
+
+      const result = lines.join('\n')
+      setField('research_extra', result || 'Nenhuma informação encontrada. Verifique o CNPJ ou nome informado.')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      alert(`Erro na pesquisa: ${msg}`)
+    }
     setResearchLoading(false)
   }
 
   const doSefaz = async () => {
-  const raw = sefazCnpj.replace(/\D/g, '')
+    const raw = sefazCnpj.replace(/\D/g, '')
+    if (raw.length !== 14) { alert('Informe um CNPJ com 14 dígitos.'); return }
+    const cnpjFmt = raw.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+    setSefazLoading(true); setSefazResult(null)
+    try {
+      // ── BrasilAPI CNPJ — gratuita, sem autenticação ──────
+      const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${raw}`)
+      if (!r.ok) {
+        const errData = await r.json().catch(() => ({}))
+        throw new Error(errData?.message || `HTTP ${r.status}`)
+      }
+      const d = await r.json()
 
-  if (raw.length !== 14) {
-    alert('Informe um CNPJ com 14 dígitos.')
-    return
+      // ── Simples Nacional ──────────────────────────────────
+      let simplesOptante = 'Não identificado'
+      let meiOptante = 'Não identificado'
+      try {
+        const rs = await fetch(`https://brasilapi.com.br/api/simples/v1/${raw}`)
+        if (rs.ok) {
+          const ds = await rs.json()
+          simplesOptante = ds.simples?.optante ? 'Sim' : 'Não'
+          meiOptante = ds.mei?.optante ? 'Sim' : 'Não'
+        }
+      } catch {}
+
+      // ── Normaliza para o formato esperado pelo estado ─────
+      const socios = (d.qsa || [])
+        .map((s: Record<string,string>) => `${s.nome_socio} (${s.qualificacao_socio})`)
+        .join('; ') || 'Não informado'
+
+      // Infere regime tributário pelo porte/simples
+      let regime = 'Não identificado'
+      if (simplesOptante === 'Sim') regime = 'Simples Nacional'
+      else if (d.porte === 'GRANDE') regime = 'Lucro Real'
+      else if (['MEDIO', 'MÉDIO'].includes(d.porte)) regime = 'Lucro Presumido'
+
+      // Infere documentos fiscais pelo CNAE
+      const cnae = String(d.cnae_fiscal || '')
+      const docsInferidos: string[] = ['NFC-e']
+      if (cnae.startsWith('4') || cnae.startsWith('5')) docsInferidos.push('NF-e modelo 55')
+      if (cnae.startsWith('49') || cnae.startsWith('53')) docsInferidos.push('CT-e','MDF-e')
+
+      const result: Record<string, string> = {
+        razao_social: d.razao_social || '—',
+        nome_fantasia: d.nome_fantasia || '—',
+        situacao_cadastral: d.descricao_situacao_cadastral || '—',
+        porte: d.porte || '—',
+        natureza_juridica: d.natureza_juridica || '—',
+        capital_social: `R$ ${Number(d.capital_social || 0).toLocaleString('pt-BR')}`,
+        atividade_principal_descricao: d.cnae_fiscal_descricao || '—',
+        data_abertura: d.data_inicio_atividade || '—',
+        municipio: d.municipio || '—',
+        uf: d.uf || '—',
+        email: d.email || '—',
+        telefone: d.ddd_telefone_1 || '—',
+        socios,
+        simples_nacional: simplesOptante,
+        mei: meiOptante,
+        total_filiais: '1',
+        regime_tributario: regime,
+        contabilidade_tipo: d.porte === 'GRANDE' ? 'Interna' : 'Externa',
+        possui_holding: 'Não identificado',
+        documentos_fiscais_emitidos: docsInferidos.join(', '),
+        operacoes_nf_modelo_55: cnae.startsWith('4') || cnae.startsWith('5') ? 'Venda' : 'Venda, Transferência',
+      }
+
+      setSefazResult(result)
+      setField('cnpj', cnpjFmt)
+      if (!fd['razao_social'] && result['razao_social'] !== '—') setField('razao_social', result['razao_social'])
+
+      // ── Auto-fill campos do formulário ───────────────────
+
+      // Nº CNPJs (BrasilAPI retorna estabelecimentos se disponível, senão 1)
+      const totalEstab = d.estabelecimentos_inscritos || d.total_estabelecimentos || 1
+      setField('qtd_cnpjs', String(totalEstab))
+
+      // Regime tributário
+      const REGIMES = ['Simples Nacional','Lucro Presumido','Lucro Real','Misto']
+      const matchedRegime = REGIMES.filter(reg => result['regime_tributario'].includes(reg))
+      if (matchedRegime.length) setField('regime', matchedRegime)
+
+      // Contabilidade
+      const contab = result['contabilidade_tipo']
+      if (contab === 'Interna' || contab === 'Externa' || contab === 'Mista') setField('contabilidade', contab)
+
+      // Holding — infere por natureza jurídica
+      const natJur = String(d.natureza_juridica || '').toLowerCase()
+      if (natJur.includes('holding') || natJur.includes('participa')) {
+        setField('holding', 'Sim')
+      } else if (natJur) {
+        setField('holding', 'Não')
+      }
+
+      // Documentos fiscais
+      const VALID_DOCS = ['NFC-e','NF-e modelo 55','MDF-e','CT-e']
+      const matchedDocs = VALID_DOCS.filter(doc => result['documentos_fiscais_emitidos'].includes(doc))
+      if (matchedDocs.length) setField('docs_fiscais', matchedDocs)
+
+      // Operações NF modelo 55
+      const VALID_OPS = ['Venda','Transferência','Industrialização','Produção própria','Marketplace']
+      const matchedOps = VALID_OPS.filter(op => result['operacoes_nf_modelo_55'].includes(op))
+      if (matchedOps.length) setField('ops_fiscais', matchedOps)
+
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      alert(`CNPJ não encontrado ou serviço indisponível.\nDetalhe: ${msg}`)
+    }
+    setSefazLoading(false)
   }
 
-  const fmt = raw.replace(
-    /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
-    '$1.$2.$3/$4-$5'
-  )
-
-  setSefazLoading(true)
-  setSefazResult(null)
-
-  try {
-    const response = await fetch(
-      `https://brasilapi.com.br/api/cnpj/v1/${raw}`
-    )
-
-    if (!response.ok) {
-      throw new Error('CNPJ não encontrado')
-    }
-
-    const empresa = await response.json()
-
-    const d: Record<string, string> = {
-      razao_social: empresa.razao_social || '',
-      nome_fantasia: empresa.nome_fantasia || '',
-      situacao_cadastral:
-        empresa.descricao_situacao_cadastral || '',
-      porte: empresa.porte || '',
-      natureza_juridica:
-        empresa.natureza_juridica || '',
-      capital_social:
-        String(empresa.capital_social || ''),
-      atividade_principal_descricao:
-        empresa.cnae_fiscal_descricao || '',
-      data_abertura:
-        empresa.data_inicio_atividade || '',
-      municipio: empresa.municipio || '',
-      uf: empresa.uf || '',
-      email: empresa.email || '',
-      telefone: empresa.ddd_telefone_1 || '',
-
-      socios:
-        empresa.qsa
-          ?.map((s: any) => s.nome_socio)
-          .join(', ') || '',
-
-      simples_nacional: 'Não informado',
-      total_filiais: '1',
-      regime_tributario: 'Não encontrado',
-      contabilidade_tipo: 'Não encontrado',
-      possui_holding: 'Não encontrado',
-      documentos_fiscais_emitidos:
-        'Não encontrado',
-      operacoes_nf_modelo_55:
-        'Não encontrado',
-    }
-
-    setSefazResult(d)
-
-    setField('cnpj', fmt)
-
-    if (
-      !fd['razao_social'] &&
-      d['razao_social']
-    ) {
-      setField(
-        'razao_social',
-        d['razao_social']
-      )
-    }
-
-    if (d['total_filiais']) {
-      const n =
-        parseInt(d['total_filiais']) || 1
-
-      setField('qtd_cnpjs', String(n))
-    }
-  } catch (err) {
-    console.error(err)
-
-    alert(
-      'CNPJ não encontrado ou serviço indisponível.'
-    )
-  }
-
-  setSefazLoading(false)
-}
-  
   const generateReport = async () => {
     if (!def) return
     setPage('report'); setLoading(true); setReportHtml(''); setReportMd('')
