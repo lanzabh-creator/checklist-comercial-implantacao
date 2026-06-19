@@ -1109,14 +1109,12 @@ select option{background:#03004F;color:#fff;}
                   {sec === sections.length - 1
                     ? <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
                         <button
-                          className="btn"
-                          style={{ background:'rgba(4,4,134,.6)', border:'1px solid rgba(4,4,134,.9)', color:'#fff', fontSize:13, fontWeight:700 }}
+                          className="btn btn-gen"
                           onClick={exportChecklistPDF}
                           disabled={checklistPdfLoading}
                         >
-                          {checklistPdfLoading ? '⏳ Gerando PDF...' : '📋 Exportar Checklist PDF'}
+                          {checklistPdfLoading ? '⏳ Gerando...' : '📋 Gerar Relatório'}
                         </button>
-                        <button className="btn btn-gen" onClick={generateReport}>✨ Gerar Relatório Estratégico</button>
                       </div>
                     : <button className="btn btn-pri" onClick={() => setSec(s => s + 1)}>Próximo →</button>
                   }
@@ -1138,7 +1136,7 @@ select option{background:#03004F;color:#fff;}
           ) : !reportHtml ? (
             <div className="rp-empty">
               <div className="big-ic">📋</div>
-              <p>Preencha o checklist e clique em <strong>Gerar Relatório Estratégico</strong>.</p>
+              <p>Preencha o checklist e clique em <strong>Gerar Relatório</strong> na última etapa.</p>
               <div className="hint">← Volte para o Checklist para começar</div>
             </div>
           ) : (
