@@ -174,7 +174,7 @@ export default function Home() {
             const data = await r.json()
             const xml = data.contents as string
             // Extrai títulos e fontes dos itens do RSS
-            const items = [...xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<source[^>]*>([\s\S]*?)<\/source>[\s\S]*?<pubDate>([\s\S]*?)<\/pubDate>[\s\S]*?<\/item>/g)]
+            const items = Array.from(xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<source[^>]*>([\s\S]*?)<\/source>[\s\S]*?<pubDate>([\s\S]*?)<\/pubDate>[\s\S]*?<\/item>/g))
             if (items.length > 0) {
               lines.push('')
               lines.push('## Notícias Recentes (Google News)')
