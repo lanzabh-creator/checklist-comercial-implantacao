@@ -659,6 +659,8 @@ strong{color:#1a1a2e;font-weight:700;}
                   </label>
                   <span style={{ fontSize: 11, color: fd[cf.id + '_name'] ? 'var(--tk-green)' : 'rgba(255,255,255,.3)' }}>{fd[cf.id + '_name'] ? `✅ ${fd[cf.id + '_name']}` : 'Nenhum arquivo selecionado'}</span>
                 </div>
+              ) : cf.type === 'textarea' ? (
+                <textarea value={cfv} placeholder={cf.ph} onChange={e => setField(cf.id, e.target.value)} style={{ minHeight: 80 }} />
               ) : (
                 <input type="text" value={cfv} placeholder={cf.ph} onChange={e => setField(cf.id, e.target.value)} />
               )}
