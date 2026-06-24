@@ -5,7 +5,7 @@ export type FieldType =
 export interface ConditionalField {
   id: string
   label: string
-  type: 'text' | 'pdf_upload'
+  type: 'text' | 'textarea' | 'pdf_upload'
   ph?: string
 }
 
