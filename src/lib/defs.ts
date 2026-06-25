@@ -300,6 +300,9 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'research_extra', label: 'Informações descobertas na pesquisa', type: 'textarea', ph: 'Preencha automaticamente ou adicione manualmente...' },
         ],
       },
+      // ── 02 VISÃO GERAL ─────────────────────────────────────
+      {
+        id: 'visao', title: 'Visão Geral do Cliente',
         desc: 'Estrutura da empresa, segmento e presença operacional',
         fields: [
           { id: 'segmento', label: 'Segmento Principal', type: 'chips', opts: ['Indústria','Distribuição','Atacado','Facilities','Serviços','Logística','Importação','Produção sob encomenda'] },
