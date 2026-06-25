@@ -927,6 +927,7 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'necessita_saneamento', label: 'Necessita saneamento de cadastros?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'cronograma_realista', label: 'Recomendação de cronograma realista', type: 'textarea', ph: 'Ex: Mínimo 6 meses dado a complexidade do receituário e volume de contratos...' },
           { id: 'materiais_coletar', label: 'Materiais obrigatórios a coletar antes do kick-off', type: 'chips', opts: ['Exemplos de notas fiscais','Relatórios atuais','Estrutura de contratos','Cardápios','Receituários','Estrutura de SKUs','Layout operacional','Fluxo de abastecimento','Lista de unidades','Contratos de fornecimento','Estrutura de centros de custo','Exemplos de faturamento','Dados fiscais básicos'] },
+          { id: 'materiais_upload', label: 'Anexar materiais coletados (enviar para o Google Drive)', type: 'drive_upload' },
           { id: 'obs', label: 'Observações finais do comercial para a equipe de implantação', type: 'textarea', ph: 'Tudo que a implantação precisa saber e não está coberto acima...' },
         ],
       },
