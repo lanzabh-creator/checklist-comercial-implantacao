@@ -71,6 +71,79 @@ export default function Home() {
   const [exportOpen, setExportOpen] = useState(false)
   const [tooltipText, setTooltipText] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [gDriveToken, setGDriveToken] = useState<string | null>(null)
+
+  // ── Google Drive OAuth + Upload ───────────────────────────
+  const GDRIVE_FOLDER = '1WewDj9_-L31fGH59XHCAgKMFQ32d3qac'
+  const GCLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
+
+  const signInGoogle = () => {
+    const params = new URLSearchParams({
+      client_id: GCLIENT_ID,
+      redirect_uri: window.location.origin + '/api/gdrive-callback',
+      response_type: 'token',
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      prompt: 'select_account',
+    })
+    const popup = window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`, 'gdrive_login', 'width=500,height=600')
+    // Listen for token from popup
+    const handler = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return
+      if (e.data?.type === 'gdrive_token') {
+        setGDriveToken(e.data.token)
+        popup?.close()
+        window.removeEventListener('message', handler)
+      }
+    }
+    window.addEventListener('message', handler)
+  }
+
+  const getOrCreateDriveFolder = async (token: string): Promise<string> => {
+    const prospect = String(fd['razao_social'] || 'Prospect').replace(/[^a-zA-Z0-9À-ÿ\s]/g, '').trim()
+    const today = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
+    const folderName = `${prospect} — ${today}`
+    // Search for existing folder
+    const searchRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(folderName)}' and '${GDRIVE_FOLDER}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    const searchData = await searchRes.json()
+    if (searchData.files?.length > 0) return searchData.files[0].id
+    // Create folder
+    const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder', parents: [GDRIVE_FOLDER] }),
+    })
+    const createData = await createRes.json()
+    return createData.id
+  }
+
+  const handleDriveUpload = async (fieldId: string, files: FileList | null) => {
+    if (!files || files.length === 0) return
+    if (!gDriveToken) { signInGoogle(); return }
+    setField(fieldId + '_uploading', 'true')
+    try {
+      const folderId = await getOrCreateDriveFolder(gDriveToken)
+      const uploaded: string[] = Array.from(fd[fieldId + '_files'] as string[] || [])
+      for (const file of Array.from(files)) {
+        const meta = JSON.stringify({ name: file.name, parents: [folderId] })
+        const form = new FormData()
+        form.append('metadata', new Blob([meta], { type: 'application/json' }))
+        form.append('file', file)
+        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${gDriveToken}` },
+          body: form,
+        })
+        if (res.ok) uploaded.push(file.name)
+      }
+      setField(fieldId + '_files', uploaded)
+    } catch {
+      alert('Erro ao enviar arquivos. Verifique o login e tente novamente.')
+    }
+    setField(fieldId + '_uploading', 'false')
+  }
   const reportRef = useRef<HTMLDivElement>(null)
 
   const def = cl ? DEFS[cl] : null
@@ -629,6 +702,60 @@ strong{color:#1a1a2e;font-weight:700;}
         </div>
       </div>
     )
+    // chips_conditional: chips where one option reveals an extra text field
+    if (f.type === 'chips_conditional') {
+      const condOpt = f.conditionalOpt || ''
+      const cf = f.conditionalField!
+      const cfv = String(fd[cf.id] || '')
+      const isCondActive = vArr.includes(condOpt)
+      return (
+        <div key={f.id} className="fgrp s2">
+          <label className="lbl">{f.label}</label>
+          <div className="chips-grp">
+            {f.opts?.map(o => <span key={o} className={`chip${vArr.includes(o) ? ' on' : ''}`} onClick={() => toggleChip(f.id, o)}>{o}</span>)}
+          </div>
+          {isCondActive && (
+            <div style={{ marginTop: 8 }}>
+              <label className="lbl" style={{ marginBottom: 4, display: 'block' }}>{cf.label}</label>
+              <input type="text" value={cfv} placeholder={cf.ph} onChange={e => setField(cf.id, e.target.value)} />
+            </div>
+          )}
+        </div>
+      )
+    }
+    // drive_upload: multi-file upload button that sends to Google Drive
+    if (f.type === 'drive_upload') {
+      const uploadedFiles = (fd[f.id + '_files'] as string[] | undefined) || []
+      const isUploading = fd[f.id + '_uploading'] === 'true'
+      return (
+        <div key={f.id} className="fgrp s2">
+          <label className="lbl">{f.label || 'Anexar arquivos'}</label>
+          <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginTop:4 }}>
+            <label style={{ background:'var(--tk-primary)', border:'1px solid var(--tk-yellow)', borderRadius:6, padding:'8px 14px', cursor:'pointer', fontFamily:"'Poppins',sans-serif", fontSize:11, fontWeight:600, color:'#fff', display:'inline-flex', alignItems:'center', gap:6 }}>
+              {isUploading ? '⏳ Enviando...' : '📎 Selecionar arquivos'}
+              <input type="file" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" style={{ display:'none' }}
+                onChange={e => handleDriveUpload(f.id, e.target.files)}
+                disabled={!!isUploading} />
+            </label>
+            {uploadedFiles.length > 0 && (
+              <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+                {uploadedFiles.map((name, i) => (
+                  <span key={i} style={{ background:'rgba(5,158,30,.12)', border:'1px solid rgba(5,158,30,.3)', borderRadius:14, padding:'3px 10px', fontSize:11, color:'var(--tk-green)' }}>✅ {name}</span>
+                ))}
+              </div>
+            )}
+          </div>
+          {!gDriveToken && (
+            <div style={{ marginTop:6, fontSize:10, color:'rgba(255,255,255,.4)', fontFamily:"'Roboto',sans-serif" }}>
+              ⚠ Faça login com o Google para enviar arquivos ao Drive
+              <button onClick={signInGoogle} style={{ marginLeft:8, background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.2)', borderRadius:5, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:600, padding:'3px 10px', cursor:'pointer' }}>
+                🔐 Login Google
+              </button>
+            </div>
+          )}
+        </div>
+      )
+    }
     if (f.type === 'radio') return (
       <div key={f.id} className="fgrp s2">
         <label className="lbl">{f.label}</label>
@@ -659,6 +786,29 @@ strong{color:#1a1a2e;font-weight:700;}
                   </label>
                   <span style={{ fontSize: 11, color: fd[cf.id + '_name'] ? 'var(--tk-green)' : 'rgba(255,255,255,.3)' }}>{fd[cf.id + '_name'] ? `✅ ${fd[cf.id + '_name']}` : 'Nenhum arquivo selecionado'}</span>
                 </div>
+              ) : cf.type === 'drive_upload' ? (
+                (() => {
+                  const uploadedFiles = (fd[cf.id + '_files'] as string[] | undefined) || []
+                  const isUploading = fd[cf.id + '_uploading'] === 'true'
+                  return (
+                    <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                      <label style={{ background:'var(--tk-primary)', border:'1px solid var(--tk-yellow)', borderRadius:6, padding:'8px 14px', cursor:'pointer', fontFamily:"'Poppins',sans-serif", fontSize:11, fontWeight:600, color:'#fff', display:'inline-flex', alignItems:'center', gap:6 }}>
+                        {isUploading ? '⏳ Enviando...' : '📎 Selecionar arquivos'}
+                        <input type="file" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" style={{ display:'none' }}
+                          onChange={e => handleDriveUpload(cf.id, e.target.files)}
+                          disabled={!!isUploading} />
+                      </label>
+                      {uploadedFiles.length > 0 && uploadedFiles.map((name, i) => (
+                        <span key={i} style={{ background:'rgba(5,158,30,.12)', border:'1px solid rgba(5,158,30,.3)', borderRadius:14, padding:'3px 10px', fontSize:11, color:'var(--tk-green)' }}>✅ {name}</span>
+                      ))}
+                      {!gDriveToken && (
+                        <button onClick={signInGoogle} style={{ background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.2)', borderRadius:5, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:600, padding:'5px 10px', cursor:'pointer' }}>
+                          🔐 Login Google
+                        </button>
+                      )}
+                    </div>
+                  )
+                })()
               ) : cf.type === 'textarea' ? (
                 <textarea value={cfv} placeholder={cf.ph} onChange={e => setField(cf.id, e.target.value)} style={{ minHeight: 80 }} />
               ) : (
