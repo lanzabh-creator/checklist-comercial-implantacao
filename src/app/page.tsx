@@ -98,40 +98,50 @@ export default function Home() {
     window.addEventListener('message', handler)
   }
 
-  const getOrCreateDriveFolder = async (token: string): Promise<string> => {
+  const getOrCreateDriveFolder = async (token: string, sectionName?: string): Promise<string> => {
+    const consultor = String(fd['consultor_nome'] || 'Consultor não identificado')
+      .replace(/[^a-zA-Z0-9À-ÿ\s\-]/g, '').trim().slice(0, 50)
     const prospect = String(fd['razao_social'] || 'Prospect')
       .replace(/[^a-zA-Z0-9À-ÿ\s\-]/g, '').trim().slice(0, 40)
     const today = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
-    const folderName = `${prospect} — ${today}`
-    // Escape single quotes for Drive API query
-    const safeName = folderName.replace(/'/g, "\\'")
-    // Search for existing folder
-    const searchRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${safeName}' and '${GDRIVE_FOLDER}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`)}&fields=files(id,name)`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-    if (!searchRes.ok) throw new Error(`Erro ao buscar pasta: ${searchRes.status}`)
-    const searchData = await searchRes.json()
-    if (searchData.files?.length > 0) return searchData.files[0].id
-    // Create folder
-    const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder', parents: [GDRIVE_FOLDER] }),
-    })
-    if (!createRes.ok) throw new Error(`Erro ao criar pasta: ${createRes.status}`)
-    const createData = await createRes.json()
-    return createData.id
+    const clienteFolderName = `${prospect} — ${today}`
+
+    const findOrCreate = async (name: string, parentId: string): Promise<string> => {
+      const safe = name.replace(/'/g, "\\'")
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${safe}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`)}&fields=files(id,name)`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      if (!res.ok) throw new Error(`Erro ao buscar pasta "${name}": ${res.status}`)
+      const data = await res.json()
+      if (data.files?.length > 0) return data.files[0].id
+      const cr = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
+      })
+      if (!cr.ok) throw new Error(`Erro ao criar pasta "${name}": ${cr.status}`)
+      const cd = await cr.json()
+      return cd.id
+    }
+
+    // Nível 1: Nome do consultor
+    const consultorFolderId = await findOrCreate(consultor, GDRIVE_FOLDER)
+    // Nível 2: Nome do cliente + data
+    const clienteFolderId = await findOrCreate(clienteFolderName, consultorFolderId)
+    // Nível 3: Nome da seção (se fornecido)
+    if (sectionName) return await findOrCreate(sectionName, clienteFolderId)
+    return clienteFolderId
   }
 
-  const handleDriveUpload = async (fieldId: string, files: FileList | null) => {
+  const handleDriveUpload = async (fieldId: string, files: FileList | null, sectionName?: string) => {
     if (!files || files.length === 0) return
     if (!gDriveToken) { signInGoogle(); return }
     setField(fieldId + '_uploading', 'true')
     const prev: string[] = Array.from((fd[fieldId + '_files'] as string[] | undefined) || [])
     const newUploaded: string[] = []
     try {
-      const folderId = await getOrCreateDriveFolder(gDriveToken)
+      const folderId = await getOrCreateDriveFolder(gDriveToken, sectionName)
       for (const file of Array.from(files)) {
         const meta = JSON.stringify({ name: file.name, parents: [folderId] })
         const form = new FormData()
@@ -753,6 +763,7 @@ strong{color:#1a1a2e;font-weight:700;}
     if (f.type === 'drive_upload') {
       const uploadedFiles = (fd[f.id + '_files'] as string[] | undefined) || []
       const isUploading = fd[f.id + '_uploading'] === 'true'
+      const secTitle = currentSec?.title
       return (
         <div key={f.id} className="fgrp s2">
           <label className="lbl">{f.label || 'Anexar arquivos'}</label>
@@ -760,7 +771,7 @@ strong{color:#1a1a2e;font-weight:700;}
             <label style={{ background:'var(--tk-primary)', border:'1px solid var(--tk-yellow)', borderRadius:6, padding:'8px 14px', cursor:'pointer', fontFamily:"'Poppins',sans-serif", fontSize:11, fontWeight:600, color:'#fff', display:'inline-flex', alignItems:'center', gap:6 }}>
               {isUploading ? '⏳ Enviando...' : '📎 Selecionar arquivos'}
               <input type="file" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" style={{ display:'none' }}
-                onChange={e => handleDriveUpload(f.id, e.target.files)}
+                onChange={e => handleDriveUpload(f.id, e.target.files, secTitle)}
                 disabled={!!isUploading} />
             </label>
             {uploadedFiles.length > 0 && (
@@ -816,12 +827,13 @@ strong{color:#1a1a2e;font-weight:700;}
                 (() => {
                   const uploadedFiles = (fd[cf.id + '_files'] as string[] | undefined) || []
                   const isUploading = fd[cf.id + '_uploading'] === 'true'
+                  const secTitle = currentSec?.title
                   return (
                     <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
                       <label style={{ background:'var(--tk-primary)', border:'1px solid var(--tk-yellow)', borderRadius:6, padding:'8px 14px', cursor:'pointer', fontFamily:"'Poppins',sans-serif", fontSize:11, fontWeight:600, color:'#fff', display:'inline-flex', alignItems:'center', gap:6 }}>
                         {isUploading ? '⏳ Enviando...' : '📎 Selecionar arquivos'}
                         <input type="file" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" style={{ display:'none' }}
-                          onChange={e => handleDriveUpload(cf.id, e.target.files)}
+                          onChange={e => handleDriveUpload(cf.id, e.target.files, secTitle)}
                           disabled={!!isUploading} />
                       </label>
                       {uploadedFiles.length > 0 && uploadedFiles.map((name, i) => (
