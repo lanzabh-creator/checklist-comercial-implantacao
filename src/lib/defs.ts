@@ -1,6 +1,7 @@
 export type FieldType =
   | 'text' | 'number' | 'textarea' | 'select' | 'radio'
-  | 'chips' | 'radio_conditional' | 'regime_dynamic' | 'risk' | 'risk_tooltip' | 'pdf_upload'
+  | 'chips' | 'radio_conditional' | 'chips_conditional'
+  | 'regime_dynamic' | 'risk' | 'risk_tooltip' | 'pdf_upload' | 'drive_upload'
 
 export interface ConditionalField {
   id: string
@@ -39,6 +40,14 @@ export const DEFS: Record<string, ChecklistDef> = {
         id: 'pesquisa', title: 'Pesquisa & Identificação',
         desc: 'Dados de identificação e fontes públicas. Clique em "Pesquisar Cliente" para enriquecer automaticamente.',
         fields: [
+          { id: 'consultor_nome', label: 'Consultor Responsável', type: 'text', ph: 'Nome do consultor Teknisa' },
+          { id: 'consultor_email', label: 'E-mail do Consultor Responsável', type: 'text', ph: 'consultor@teknisa.com' },
+          { id: 'sponsor_nome', label: 'Sponsor Executivo — Nome', type: 'text', ph: 'Nome e cargo' },
+          { id: 'sponsor_email', label: 'Sponsor Executivo — E-mail', type: 'text', ph: 'sponsor@empresa.com.br' },
+          { id: 'sponsor_tel', label: 'Sponsor Executivo — Telefone', type: 'text', ph: '(11) 99999-9999' },
+          { id: 'coord_nome', label: 'Coordenador do Projeto no Cliente — Nome', type: 'text', ph: 'Nome e cargo' },
+          { id: 'coord_email', label: 'Coordenador do Projeto no Cliente — E-mail', type: 'text', ph: 'coordenador@empresa.com.br' },
+          { id: 'coord_tel', label: 'Coordenador do Projeto no Cliente — Telefone', type: 'text', ph: '(11) 99999-9999' },
           { id: 'razao_social', label: 'Razão Social / Nome Fantasia', type: 'text', ph: 'Ex: Grupo Madero Restaurantes S.A.' },
           { id: 'cnpj', label: 'CNPJ Principal', type: 'text', ph: '00.000.000/0001-00' },
           { id: 'site', label: 'Site Oficial', type: 'text', ph: 'https://www.empresa.com.br' },
@@ -275,6 +284,14 @@ export const DEFS: Record<string, ChecklistDef> = {
         id: 'pesquisa', title: 'Pesquisa & Identificação',
         desc: 'Dados de identificação e fontes públicas. Clique em "Pesquisar Cliente" para enriquecer automaticamente.',
         fields: [
+          { id: 'consultor_nome', label: 'Consultor Responsável', type: 'text', ph: 'Nome do consultor Teknisa' },
+          { id: 'consultor_email', label: 'E-mail do Consultor Responsável', type: 'text', ph: 'consultor@teknisa.com' },
+          { id: 'sponsor_nome', label: 'Sponsor Executivo — Nome', type: 'text', ph: 'Nome e cargo' },
+          { id: 'sponsor_email', label: 'Sponsor Executivo — E-mail', type: 'text', ph: 'sponsor@empresa.com.br' },
+          { id: 'sponsor_tel', label: 'Sponsor Executivo — Telefone', type: 'text', ph: '(11) 99999-9999' },
+          { id: 'coord_nome', label: 'Coordenador do Projeto no Cliente — Nome', type: 'text', ph: 'Nome e cargo' },
+          { id: 'coord_email', label: 'Coordenador do Projeto no Cliente — E-mail', type: 'text', ph: 'coordenador@empresa.com.br' },
+          { id: 'coord_tel', label: 'Coordenador do Projeto no Cliente — Telefone', type: 'text', ph: '(11) 99999-9999' },
           { id: 'razao_social', label: 'Razão Social / Nome Fantasia', type: 'text', ph: 'Nome da empresa' },
           { id: 'cnpj', label: 'CNPJ Principal', type: 'text', ph: '00.000.000/0001-00' },
           { id: 'site', label: 'Site Oficial', type: 'text', ph: 'https://www.empresa.com.br' },
@@ -283,9 +300,6 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'research_extra', label: 'Informações descobertas na pesquisa', type: 'textarea', ph: 'Preencha automaticamente ou adicione manualmente...' },
         ],
       },
-      // ── 02 VISÃO GERAL ─────────────────────────────────────
-      {
-        id: 'visao', title: 'Visão Geral do Cliente',
         desc: 'Estrutura da empresa, segmento e presença operacional',
         fields: [
           { id: 'segmento', label: 'Segmento Principal', type: 'chips', opts: ['Indústria','Distribuição','Atacado','Facilities','Serviços','Logística','Importação','Produção sob encomenda'] },
@@ -621,6 +635,14 @@ export const DEFS: Record<string, ChecklistDef> = {
         id: 'pesquisa', title: 'Pesquisa & Identificação',
         desc: 'Dados de identificação e fontes públicas. Clique em "Pesquisar Cliente" para enriquecer automaticamente.',
         fields: [
+          { id: 'consultor_nome', label: 'Consultor Responsável', type: 'text', ph: 'Nome do consultor Teknisa' },
+          { id: 'consultor_email', label: 'E-mail do Consultor Responsável', type: 'text', ph: 'consultor@teknisa.com' },
+          { id: 'sponsor_nome', label: 'Sponsor Executivo — Nome', type: 'text', ph: 'Nome e cargo' },
+          { id: 'sponsor_email', label: 'Sponsor Executivo — E-mail', type: 'text', ph: 'sponsor@empresa.com.br' },
+          { id: 'sponsor_tel', label: 'Sponsor Executivo — Telefone', type: 'text', ph: '(11) 99999-9999' },
+          { id: 'coord_nome', label: 'Coordenador do Projeto no Cliente — Nome', type: 'text', ph: 'Nome e cargo' },
+          { id: 'coord_email', label: 'Coordenador do Projeto no Cliente — E-mail', type: 'text', ph: 'coordenador@empresa.com.br' },
+          { id: 'coord_tel', label: 'Coordenador do Projeto no Cliente — Telefone', type: 'text', ph: '(11) 99999-9999' },
           { id: 'razao_social', label: 'Razão Social / Nome Fantasia', type: 'text', ph: 'Nome da empresa' },
           { id: 'cnpj', label: 'CNPJ Principal', type: 'text', ph: '00.000.000/0001-00' },
           { id: 'site', label: 'Site Oficial', type: 'text', ph: 'https://www.empresa.com.br' },
@@ -629,12 +651,11 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'research_extra', label: 'Informações descobertas na pesquisa', type: 'textarea', ph: 'Preencha automaticamente ou manualmente...' },
         ],
       },
-      // ── 02 VISÃO GERAL ─────────────────────────────────────
       {
         id: 'visao', title: 'Visão Geral do Cliente',
         desc: 'Segmentos de atuação, porte e estrutura operacional',
         fields: [
-          { id: 'segmento', label: 'Segmentos de Atuação', type: 'chips', opts: ['Unidade administrada','Refeições transportadas','Merenda escolar','Hospitalar','Corporativo','Industrial','Prisional','Eventos'] },
+          { id: 'segmento', label: 'Segmentos de Atuação', type: 'chips', opts: ['Unidade administrada','Refeições transportadas','Merenda escolar','Hospitalar','Corporativo','Industrial','Prisional','Eventos','Offshore'] },
           { id: 'tempo_op', label: 'Tempo de atuação da empresa', type: 'text', ph: 'Ex: 12 anos' },
           { id: 'regiao', label: 'Região de atuação', type: 'text', ph: 'Ex: Nacional, Sudeste...' },
           { id: 'contratos', label: 'Quantidade total de contratos ativos', type: 'number', ph: '0' },
@@ -689,6 +710,7 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'marca_exigida', label: 'Possui controle de marca/produto exigido pelo cliente?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'restricoes_nutricionais', label: 'Existem restrições nutricionais específicas?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'exigencias_sanitarias', label: 'Existem exigências sanitárias específicas?', type: 'radio', opts: ['Sim','Não'] },
+          { id: 'abastecimento_freq', label: 'Frequência de abastecimento por categoria', type: 'chips', opts: ['Perecíveis — diário','Secos — semanal','Congelados — quinzenal','Hortifruti — diário','Outro'] },
         ],
       },
       // ── 05 PRODUTOS, RECEITUÁRIO E PRODUÇÃO ────────────────
@@ -709,7 +731,6 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'ctrl_nutricional', label: 'Existe controle nutricional?', type: 'radio', opts: ['Sim','Não','Em desenvolvimento'] },
           { id: 'alerg', label: 'Existe controle de alergênicos?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'tabela_nutricional', label: 'Possui tabela nutricional?', type: 'radio', opts: ['Sim','Não','Parcialmente'] },
-          { id: 'abastecimento_freq', label: 'Frequência de abastecimento por categoria', type: 'chips', opts: ['Perecíveis — diário','Secos — semanal','Congelados — quinzenal','Hortifruti — diário','Outro'] },
           { id: 'transferencia_unidades', label: 'Transferência entre unidades?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'logistica_propria', label: 'Possui logística própria?', type: 'radio', opts: ['Sim','Não','Parcialmente'] },
           { id: 'roteirizacao', label: 'Existe roteirização?', type: 'radio', opts: ['Sim','Não','Em avaliação'] },
@@ -782,10 +803,9 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'rh_atual', label: 'RH / Folha', type: 'text', ph: 'Nome ou Nenhum' },
           { id: 'sys_estoque', label: 'Controle de Estoque', type: 'text', ph: 'Nome ou Nenhum' },
           { id: 'sys_producao', label: 'Controle de Produção', type: 'text', ph: 'Nome ou Nenhum' },
-          { id: 'integracoes', label: 'Integrações necessárias', type: 'chips', opts: ['Contabilidade','Sistemas do cliente contratante','Portal de compras','BI','RH','Apps operacionais','APIs externas','Operador logístico (OL)'] },
+          { id: 'integracoes', label: 'Integrações necessárias', type: 'chips_conditional', opts: ['Contabilidade','Sistemas do cliente contratante','Portal de compras','BI','RH','Apps operacionais','APIs externas','Operador logístico (OL)','Outros'], conditionalOpt: 'Outros', conditionalField: { id: 'integracoes_outros', label: 'Quais outras integrações?', type: 'text', ph: 'Descreva as outras integrações...' } },
           { id: 'funciona', label: 'O que funciona bem hoje? (não pode perder)', type: 'textarea', ph: 'Descreva...' },
           { id: 'dificuldades', label: 'Principais dificuldades atuais', type: 'textarea', ph: 'Descreva...' },
-          { id: 'planilhas', label: 'Existem controles paralelos em planilhas?', type: 'radio', opts: ['Sim, muitas','Algumas','Não'] },
           { id: 'nao_pode_parar', label: 'O que não pode parar na virada?', type: 'textarea', ph: 'Processos ou operações críticas...' },
         ],
       },
@@ -807,6 +827,7 @@ export const DEFS: Record<string, ChecklistDef> = {
         desc: 'Relatórios, KPIs, maturidade de gestão e tomada de decisão',
         fields: [
           { id: 'relatorios_atuais', label: 'Quais relatórios utiliza hoje? (solicitar 3 a 5 exemplos)', type: 'textarea', ph: 'Ex: 1. Custo por refeição, 2. CMV mensal, 3. Relatório de cardápio...' },
+          { id: 'relatorios_upload', label: 'Anexar relatórios (imagens ou PDFs)', type: 'drive_upload', ph: 'Enviar arquivos para o Google Drive' },
           { id: 'reuniao_gestao', label: 'Qual dia do mês ocorre reunião gerencial?', type: 'text', ph: 'Ex: Todo dia 5 / Segunda semana do mês' },
           { id: 'kpis', label: 'Indicadores acompanhados', type: 'chips', opts: ['CMV','Custo por refeição','Desperdício','Produtividade','Ruptura','SLA','Resultado por contrato','Consumo per capita'] },
           { id: 'nivel_organizacao', label: 'Nível de organização do cliente', type: 'radio', opts: ['Alto','Médio','Baixo'] },
@@ -816,6 +837,7 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'decisao_operacional', label: 'Quem toma decisão operacional?', type: 'text', ph: 'Nome e cargo' },
           { id: 'aprova_mudancas', label: 'Quem aprova mudanças?', type: 'text', ph: 'Nome e cargo' },
           { id: 'maturidade', label: 'Maturidade de Gestão (avaliação do comercial)', type: 'radio', opts: ['Alta','Média','Baixa'] },
+          { id: 'planilhas', label: 'Existem controles paralelos em planilhas?', type: 'radio_conditional', opts: ['Não','Sim'], conditionalOpt: 'Sim', conditionalField: { id: 'planilhas_upload', label: 'Enviar planilhas para o Google Drive', type: 'drive_upload' } },
         ],
       },
       // ── 12 PROJETO E IMPLANTAÇÃO ───────────────────────────
@@ -832,7 +854,7 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'inicio_escopo', label: 'Por onde deseja começar?', type: 'textarea', ph: 'Módulo ou processo inicial...' },
           { id: 'unidade_piloto', label: 'Unidade piloto?', type: 'text', ph: 'Ex: Unidade ABC / Cozinha Central SP' },
           { id: 'contrato_piloto', label: 'Contrato piloto?', type: 'text', ph: 'Ex: Contrato XYZ — 500 ref/dia' },
-          { id: 'modulos_prio', label: 'Prioridades do projeto / Módulos contratados', type: 'chips', opts: ['Receituário','Produção','Estoque','Compras','Financeiro','Fiscal','PDV','BI','Nutrição','Contratos','IA','Abastecimento'] },
+          { id: 'modulos_prio', label: 'Módulos Contratados Prioritários (marque até 3)', type: 'chips', opts: ['Receituário','Produção','Estoque','Compras','Financeiro','Fiscal','PDV','BI','Nutrição','Contratos','IA','Abastecimento'] },
           { id: 'resp_processos', label: 'Responsável por definir processos', type: 'text', ph: 'Nome e cargo' },
           { id: 'resp_arvore_produtos', label: 'Responsável por definir árvore de produtos', type: 'text', ph: 'Nome e cargo' },
           { id: 'resp_receituario', label: 'Responsável por validar receituário', type: 'text', ph: 'Nome e cargo' },
@@ -840,11 +862,12 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'resp_cadastros', label: 'Responsável por realizar cadastros', type: 'text', ph: 'Nome e cargo' },
           { id: 'resp_treinamentos', label: 'Responsável por participar de treinamentos', type: 'text', ph: 'Nome e cargo' },
           { id: 'resp_aprovacao', label: 'Responsável por aprovar entregas / assinar documentos', type: 'text', ph: 'Nome e cargo' },
-          { id: 'sponsor', label: 'Sponsor Executivo', type: 'text', ph: 'Nome e cargo' },
           { id: 'freq_status', label: 'Frequência disponível para status report', type: 'radio', opts: ['Semanal','Quinzenal','Mensal','A definir'] },
           { id: 'aprova_financeiro', label: 'Quem aprova financeiramente?', type: 'text', ph: 'Nome e cargo' },
           { id: 'go_live', label: 'Expectativa de entrada em produção', type: 'text', ph: 'Ex: Q4 2025' },
           { id: 'prazo_conclusao', label: 'Prazo esperado para conclusão do projeto', type: 'text', ph: 'Ex: 8 meses' },
+          { id: 'custos_visitas', label: 'Foi mencionado sobre custos de agendas/visitas presenciais?', type: 'radio', opts: ['Sim, cliente ciente','Não se aplica'] },
+          { id: 'concorrencia', label: 'Concorrência em avaliação', type: 'chips_conditional', opts: ['Genial','NL','Totvs','Sankhya','Nutriplus','Eprocorpo','Oracle Food','SAP','Outro'], conditionalOpt: 'Outro', conditionalField: { id: 'concorrencia_outro', label: 'Qual outro concorrente?', type: 'text', ph: 'Nome do concorrente...' } },
           { id: 'data_critica', label: 'Existe data crítica?', type: 'radio_conditional', opts: ['Não','Sim'], conditionalOpt: 'Sim', conditionalField: { id: 'data_critica_desc', label: 'Descreva a data crítica', type: 'text', ph: 'Ex: Renovação contratual em março / Início de licitação em fev/26' } },
         ],
       },
