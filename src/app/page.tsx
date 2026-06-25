@@ -80,7 +80,7 @@ export default function Home() {
   const signInGoogle = () => {
     const params = new URLSearchParams({
       client_id: GCLIENT_ID,
-      redirect_uri: window.location.origin + '/api/gdrive-callback',
+      redirect_uri: window.location.origin + '/gdrive-callback',
       response_type: 'token',
       scope: 'https://www.googleapis.com/auth/drive.file',
       prompt: 'select_account',
