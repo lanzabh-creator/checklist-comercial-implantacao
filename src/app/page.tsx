@@ -99,14 +99,18 @@ export default function Home() {
   }
 
   const getOrCreateDriveFolder = async (token: string): Promise<string> => {
-    const prospect = String(fd['razao_social'] || 'Prospect').replace(/[^a-zA-Z0-9À-ÿ\s]/g, '').trim()
+    const prospect = String(fd['razao_social'] || 'Prospect')
+      .replace(/[^a-zA-Z0-9À-ÿ\s\-]/g, '').trim().slice(0, 40)
     const today = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
     const folderName = `${prospect} — ${today}`
+    // Escape single quotes for Drive API query
+    const safeName = folderName.replace(/'/g, "\\'")
     // Search for existing folder
     const searchRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=name='${encodeURIComponent(folderName)}' and '${GDRIVE_FOLDER}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`,
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${safeName}' and '${GDRIVE_FOLDER}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`)}&fields=files(id,name)`,
       { headers: { Authorization: `Bearer ${token}` } }
     )
+    if (!searchRes.ok) throw new Error(`Erro ao buscar pasta: ${searchRes.status}`)
     const searchData = await searchRes.json()
     if (searchData.files?.length > 0) return searchData.files[0].id
     // Create folder
@@ -115,6 +119,7 @@ export default function Home() {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder', parents: [GDRIVE_FOLDER] }),
     })
+    if (!createRes.ok) throw new Error(`Erro ao criar pasta: ${createRes.status}`)
     const createData = await createRes.json()
     return createData.id
   }
@@ -123,9 +128,9 @@ export default function Home() {
     if (!files || files.length === 0) return
     if (!gDriveToken) { signInGoogle(); return }
     setField(fieldId + '_uploading', 'true')
+    const uploaded: string[] = Array.from((fd[fieldId + '_files'] as string[] | undefined) || [])
     try {
       const folderId = await getOrCreateDriveFolder(gDriveToken)
-      const uploaded: string[] = Array.from(fd[fieldId + '_files'] as string[] || [])
       for (const file of Array.from(files)) {
         const meta = JSON.stringify({ name: file.name, parents: [folderId] })
         const form = new FormData()
@@ -136,11 +141,24 @@ export default function Home() {
           headers: { Authorization: `Bearer ${gDriveToken}` },
           body: form,
         })
-        if (res.ok) uploaded.push(file.name)
+        if (res.ok) {
+          uploaded.push(file.name)
+        } else {
+          const err = await res.json()
+          // Token expirado — pede novo login
+          if (res.status === 401) {
+            setGDriveToken(null)
+            alert('Sessão do Google expirada. Faça login novamente.')
+            setField(fieldId + '_uploading', 'false')
+            return
+          }
+          alert(`Erro ao enviar "${file.name}": ${err?.error?.message || res.status}`)
+        }
       }
       setField(fieldId + '_files', uploaded)
-    } catch {
-      alert('Erro ao enviar arquivos. Verifique o login e tente novamente.')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      alert(`Erro no upload: ${msg}`)
     }
     setField(fieldId + '_uploading', 'false')
   }
