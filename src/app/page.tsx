@@ -128,7 +128,8 @@ export default function Home() {
     if (!files || files.length === 0) return
     if (!gDriveToken) { signInGoogle(); return }
     setField(fieldId + '_uploading', 'true')
-    const uploaded: string[] = Array.from((fd[fieldId + '_files'] as string[] | undefined) || [])
+    const prev: string[] = Array.from((fd[fieldId + '_files'] as string[] | undefined) || [])
+    const newUploaded: string[] = []
     try {
       const folderId = await getOrCreateDriveFolder(gDriveToken)
       for (const file of Array.from(files)) {
@@ -142,10 +143,9 @@ export default function Home() {
           body: form,
         })
         if (res.ok) {
-          uploaded.push(file.name)
+          newUploaded.push(file.name)
         } else {
-          const err = await res.json()
-          // Token expirado — pede novo login
+          const err = await res.json().catch(() => ({}))
           if (res.status === 401) {
             setGDriveToken(null)
             alert('Sessão do Google expirada. Faça login novamente.')
@@ -155,12 +155,20 @@ export default function Home() {
           alert(`Erro ao enviar "${file.name}": ${err?.error?.message || res.status}`)
         }
       }
-      setField(fieldId + '_files', uploaded)
+      // Force new array reference so React detects the change
+      setFd(prev2 => ({
+        ...prev2,
+        [fieldId + '_files']: [...prev, ...newUploaded],
+        [fieldId + '_uploading']: 'false',
+      }))
+      if (newUploaded.length > 0) {
+        alert(`✅ ${newUploaded.length} arquivo(s) enviado(s) com sucesso para o Google Drive!`)
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       alert(`Erro no upload: ${msg}`)
+      setField(fieldId + '_uploading', 'false')
     }
-    setField(fieldId + '_uploading', 'false')
   }
   const reportRef = useRef<HTMLDivElement>(null)
 
