@@ -1129,6 +1129,9 @@ select option{background:#03004F;color:#fff;}
         <div style={{ display:'flex',alignItems:'center',gap:8 }}>
           <div className="hdr-client">Cliente: <strong>{clientName}</strong></div>
           <div className="status-pill"><span className="sdot" />Sistema Ativo</div>
+          <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:9, fontWeight:700, color:'rgba(244,184,0,.7)', background:'rgba(244,184,0,.08)', border:'1px solid rgba(244,184,0,.2)', borderRadius:20, padding:'3px 9px', letterSpacing:'0.5px', whiteSpace:'nowrap' }}>
+            v0.8.0-beta
+          </div>
           <button className="mob-menu-btn" onClick={() => setSidebarOpen(o => !o)} aria-label="Menu">☰</button>
         </div>
       </header>
