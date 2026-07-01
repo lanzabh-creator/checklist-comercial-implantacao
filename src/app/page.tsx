@@ -206,7 +206,13 @@ export default function Home() {
   const toggleChip = useCallback((id: string, val: string) => {
     setFd(prev => {
       const cur = Array.isArray(prev[id]) ? (prev[id] as string[]) : []
-      return { ...prev, [id]: cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val] }
+      if (cur.includes(val)) return { ...prev, [id]: cur.filter(x => x !== val) }
+      // Enforce max 3 for modulos_prio
+      if (id === 'modulos_prio' && cur.length >= 3) {
+        alert('⚠️ Selecione no máximo 3 módulos prioritários.\n\nDesmarque um antes de selecionar outro.')
+        return prev
+      }
+      return { ...prev, [id]: [...cur, val] }
     })
   }, [])
 
@@ -768,10 +774,16 @@ strong{color:#1a1a2e;font-weight:700;}
         <div key={f.id} className="fgrp s2">
           <label className="lbl">{f.label || 'Anexar arquivos'}</label>
           <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginTop:4 }}>
-            <label style={{ background:'var(--tk-primary)', border:'1px solid var(--tk-yellow)', borderRadius:6, padding:'8px 14px', cursor:'pointer', fontFamily:"'Poppins',sans-serif", fontSize:11, fontWeight:600, color:'#fff', display:'inline-flex', alignItems:'center', gap:6 }}>
+            <label style={{ background:'var(--tk-primary)', border:'1px solid var(--tk-yellow)', borderRadius:6, padding:'8px 14px', cursor: isUploading ? 'not-allowed' : 'pointer', fontFamily:"'Poppins',sans-serif", fontSize:11, fontWeight:600, color:'#fff', display:'inline-flex', alignItems:'center', gap:6, opacity: isUploading ? .6 : 1 }}>
               {isUploading ? '⏳ Enviando...' : '📎 Selecionar arquivos'}
               <input type="file" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" style={{ display:'none' }}
-                onChange={e => handleDriveUpload(f.id, e.target.files, secTitle)}
+                onChange={e => {
+                  if (!gDriveToken) {
+                    alert('⚠️ Faça login com o Google antes de enviar arquivos.\n\nClique em "🔐 Login Google" abaixo.')
+                    return
+                  }
+                  handleDriveUpload(f.id, e.target.files, secTitle)
+                }}
                 disabled={!!isUploading} />
             </label>
             {uploadedFiles.length > 0 && (
@@ -783,9 +795,9 @@ strong{color:#1a1a2e;font-weight:700;}
             )}
           </div>
           {!gDriveToken && (
-            <div style={{ marginTop:6, fontSize:10, color:'rgba(255,255,255,.4)', fontFamily:"'Roboto',sans-serif" }}>
+            <div style={{ marginTop:6, fontSize:10, color:'rgba(255,255,255,.4)', fontFamily:"'Roboto',sans-serif", display:'flex', alignItems:'center', gap:6 }}>
               ⚠ Faça login com o Google para enviar arquivos ao Drive
-              <button onClick={signInGoogle} style={{ marginLeft:8, background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.2)', borderRadius:5, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:600, padding:'3px 10px', cursor:'pointer' }}>
+              <button onClick={signInGoogle} style={{ background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.2)', borderRadius:5, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:600, padding:'3px 10px', cursor:'pointer' }}>
                 🔐 Login Google
               </button>
             </div>
@@ -833,7 +845,13 @@ strong{color:#1a1a2e;font-weight:700;}
                       <label style={{ background:'var(--tk-primary)', border:'1px solid var(--tk-yellow)', borderRadius:6, padding:'8px 14px', cursor:'pointer', fontFamily:"'Poppins',sans-serif", fontSize:11, fontWeight:600, color:'#fff', display:'inline-flex', alignItems:'center', gap:6 }}>
                         {isUploading ? '⏳ Enviando...' : '📎 Selecionar arquivos'}
                         <input type="file" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" style={{ display:'none' }}
-                          onChange={e => handleDriveUpload(cf.id, e.target.files, secTitle)}
+                          onChange={e => {
+                            if (!gDriveToken) {
+                              alert('⚠️ Faça login com o Google antes de enviar arquivos.\n\nClique em "🔐 Login Google" abaixo.')
+                              return
+                            }
+                            handleDriveUpload(cf.id, e.target.files, secTitle)
+                          }}
                           disabled={!!isUploading} />
                       </label>
                       {uploadedFiles.length > 0 && uploadedFiles.map((name, i) => (
@@ -1130,7 +1148,7 @@ select option{background:#03004F;color:#fff;}
           <div className="hdr-client">Cliente: <strong>{clientName}</strong></div>
           <div className="status-pill"><span className="sdot" />Sistema Ativo</div>
           <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:9, fontWeight:700, color:'rgba(244,184,0,.7)', background:'rgba(244,184,0,.08)', border:'1px solid rgba(244,184,0,.2)', borderRadius:20, padding:'3px 9px', letterSpacing:'0.5px', whiteSpace:'nowrap' }}>
-            v0.8.0-beta
+            v0.9.0-beta
           </div>
           <button className="mob-menu-btn" onClick={() => setSidebarOpen(o => !o)} aria-label="Menu">☰</button>
         </div>
@@ -1294,7 +1312,15 @@ select option{background:#03004F;color:#fff;}
                 )}
 
                 <div className="fg">
-                  {currentSec?.fields.map(f => renderField(f))}
+                  {currentSec?.fields.map(f => {
+                    // Hide coord_projeto detail fields unless coord_projeto = Sim
+                    if (['coord_projeto_email','coord_projeto_tel'].includes(f.id) && fd['coord_projeto'] !== 'Sim') return null
+                    // Hide coord_projeto_nome when it's a standalone field (ERP §17) unless Sim
+                    if (f.id === 'coord_projeto_nome' && currentSec?.id === 'parecer' && fd['coord_projeto'] !== 'Sim') return null
+                    // Hide custos_visitas detail fields unless Sim, cliente ciente
+                    if (['custos_resp_nome','custos_resp_email','custos_resp_tel'].includes(f.id) && fd['custos_visitas'] !== 'Sim, cliente ciente') return null
+                    return renderField(f)
+                  })}
                 </div>
 
                 <div className="form-nav">
