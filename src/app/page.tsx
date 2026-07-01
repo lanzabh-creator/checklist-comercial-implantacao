@@ -836,35 +836,39 @@ strong{color:#1a1a2e;font-weight:700;}
                   <span style={{ fontSize: 11, color: fd[cf.id + '_name'] ? 'var(--tk-green)' : 'rgba(255,255,255,.3)' }}>{fd[cf.id + '_name'] ? `✅ ${fd[cf.id + '_name']}` : 'Nenhum arquivo selecionado'}</span>
                 </div>
               ) : cf.type === 'drive_upload' ? (
-                (() => {
-                  const uploadedFiles = (fd[cf.id + '_files'] as string[] | undefined) || []
-                  const isUploading = fd[cf.id + '_uploading'] === 'true'
-                  const secTitle = currentSec?.title
-                  return (
-                    <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-                      <label style={{ background:'var(--tk-primary)', border:'1px solid var(--tk-yellow)', borderRadius:6, padding:'8px 14px', cursor:'pointer', fontFamily:"'Poppins',sans-serif", fontSize:11, fontWeight:600, color:'#fff', display:'inline-flex', alignItems:'center', gap:6 }}>
-                        {isUploading ? '⏳ Enviando...' : '📎 Selecionar arquivos'}
-                        <input type="file" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" style={{ display:'none' }}
-                          onChange={e => {
-                            if (!gDriveToken) {
-                              alert('⚠️ Faça login com o Google antes de enviar arquivos.\n\nClique em "🔐 Login Google" abaixo.')
-                              return
-                            }
-                            handleDriveUpload(cf.id, e.target.files, secTitle)
-                          }}
-                          disabled={!!isUploading} />
-                      </label>
-                      {uploadedFiles.length > 0 && uploadedFiles.map((name, i) => (
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                    <label style={{ background: fd[cf.id + '_uploading'] === 'true' ? 'rgba(4,4,134,.4)' : 'var(--tk-primary)', border:'1px solid var(--tk-yellow)', borderRadius:6, padding:'8px 14px', cursor: fd[cf.id + '_uploading'] === 'true' ? 'not-allowed' : 'pointer', fontFamily:"'Poppins',sans-serif", fontSize:11, fontWeight:600, color:'#fff', display:'inline-flex', alignItems:'center', gap:6, opacity: fd[cf.id + '_uploading'] === 'true' ? .7 : 1 }}>
+                      {fd[cf.id + '_uploading'] === 'true' ? '⏳ Enviando...' : '📎 Selecionar arquivos'}
+                      <input type="file" multiple accept="image/*,.pdf,.xlsx,.xls,.csv" style={{ display:'none' }}
+                        onChange={e => {
+                          if (!gDriveToken) {
+                            alert('⚠️ Faça login com o Google antes de enviar arquivos.\n\nClique em "🔐 Login Google" abaixo.')
+                            return
+                          }
+                          handleDriveUpload(cf.id, e.target.files, currentSec?.title)
+                        }}
+                        disabled={fd[cf.id + '_uploading'] === 'true'} />
+                    </label>
+                    {!gDriveToken && (
+                      <button onClick={signInGoogle} style={{ background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.2)', borderRadius:5, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:600, padding:'5px 10px', cursor:'pointer' }}>
+                        🔐 Login Google
+                      </button>
+                    )}
+                  </div>
+                  {((fd[cf.id + '_files'] as string[] | undefined) || []).length > 0 && (
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+                      {((fd[cf.id + '_files'] as string[] | undefined) || []).map((name: string, i: number) => (
                         <span key={i} style={{ background:'rgba(5,158,30,.12)', border:'1px solid rgba(5,158,30,.3)', borderRadius:14, padding:'3px 10px', fontSize:11, color:'var(--tk-green)' }}>✅ {name}</span>
                       ))}
-                      {!gDriveToken && (
-                        <button onClick={signInGoogle} style={{ background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.2)', borderRadius:5, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:600, padding:'5px 10px', cursor:'pointer' }}>
-                          🔐 Login Google
-                        </button>
-                      )}
                     </div>
-                  )
-                })()
+                  )}
+                  {!gDriveToken && (
+                    <div style={{ fontSize:10, color:'rgba(255,255,255,.4)', fontFamily:"'Roboto',sans-serif" }}>
+                      ⚠ Faça login com o Google para enviar arquivos ao Drive
+                    </div>
+                  )}
+                </div>
               ) : cf.type === 'textarea' ? (
                 <textarea value={cfv} placeholder={cf.ph} onChange={e => setField(cf.id, e.target.value)} style={{ minHeight: 80 }} />
               ) : (
