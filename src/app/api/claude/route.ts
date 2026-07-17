@@ -15,9 +15,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Chamada simples — apenas para geração de relatório (sem web_search)
     const response = await client.messages.create({
-      model: 'claude-opus-4-5',   // modelo estável disponível no free tier da API
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }],
     })
