@@ -1311,6 +1311,18 @@ select option{background:#03004F;color:#fff;}
                   </div>
                 ))}
               </div>
+              <hr className="sb-div" />
+              <div style={{ padding:'0 10px 16px' }}>
+                <button
+                  onClick={() => { setSec(sections.findIndex(s => s.id === 'antes_depois')); setSidebarOpen(false) }}
+                  style={{ width:'100%', background:'rgba(5,158,30,.12)', border:'1px solid rgba(5,158,30,.35)', borderRadius:8, color:'var(--tk-green)', fontFamily:"'Poppins',sans-serif", fontSize:11, fontWeight:700, padding:'10px 12px', cursor:'pointer', display:'flex', alignItems:'center', gap:8, transition:'all .18s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(5,158,30,.22)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(5,158,30,.12)' }}
+                >
+                  <span style={{ fontSize:16 }}>📊</span>
+                  <span>Atualizar Dados<br />Pós-Implantação</span>
+                </button>
+              </div>
             </>}
           </aside>
 
@@ -1436,7 +1448,18 @@ select option{background:#03004F;color:#fff;}
                           <tr>
                             <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'rgba(255,255,255,.4)', textTransform:'uppercase', letterSpacing:'1.5px', padding:'8px 12px', textAlign:'left', width:'30%', borderBottom:'1px solid rgba(255,255,255,.1)' }}>Indicador</th>
                             <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'rgba(255,255,255,.6)', textTransform:'uppercase', letterSpacing:'1.5px', padding:'8px 12px', textAlign:'left', width:'35%', borderBottom:'1px solid rgba(255,255,255,.1)', background:'rgba(255,255,255,.04)' }}>🕐 Antes</th>
-                            <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'var(--tk-green)', textTransform:'uppercase', letterSpacing:'1.5px', padding:'8px 12px', textAlign:'left', width:'35%', borderBottom:'1px solid rgba(255,255,255,.1)', background:'rgba(5,158,30,.06)' }}>✅ Depois</th>
+                            <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'var(--tk-green)', textTransform:'uppercase', letterSpacing:'1.5px', padding:'8px 12px', textAlign:'left', width:'35%', borderBottom:'1px solid rgba(255,255,255,.1)', background:'rgba(5,158,30,.06)' }}>
+                              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
+                                <span>✅ Depois</span>
+                                <button
+                                  onClick={generateComparativeReport}
+                                  disabled={comparativeLoading}
+                                  style={{ background:'var(--tk-green)', border:'none', borderRadius:6, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, padding:'5px 10px', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap', opacity: comparativeLoading ? .6 : 1 }}
+                                >
+                                  {comparativeLoading ? '⏳ Gerando...' : '📄 Relatório Antes & Depois'}
+                                </button>
+                              </div>
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1478,19 +1501,6 @@ select option{background:#03004F;color:#fff;}
                         </tbody>
                       </table>
                     </div>
-                    {/* Comparative report button — only shown if Depois has data */}
-                    {(fd['ad_fat_depois'] || fd['ad_margem_depois'] || fd['ad_cmv_depois'] || fd['ad_desperdicio_depois'] || fd['ad_ticket_depois']) && (
-                      <div style={{ marginTop:20, padding:'14px 16px', background:'rgba(5,158,30,.08)', border:'1px solid rgba(5,158,30,.25)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-                        <div>
-                          <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:12, fontWeight:700, color:'var(--tk-green)' }}>✅ Dados pós-implantação detectados</div>
-                          <div style={{ fontFamily:'Roboto,sans-serif', fontSize:11, color:'rgba(255,255,255,.5)', marginTop:3 }}>Gere um Relatório Comparativo para analisar o impacto da implantação Teknisa</div>
-                        </div>
-                        <button className="btn" style={{ background:'var(--tk-green)', color:'#fff', fontWeight:700, fontSize:13, border:'none', flexShrink:0 }}
-                          onClick={generateComparativeReport}>
-                          {comparativeLoading ? '⏳ Gerando...' : '📈 Gerar Relatório Comparativo'}
-                        </button>
-                      </div>
-                    )}
                   </div>
                 ) : (
                 <div className="fg">
@@ -1527,23 +1537,7 @@ select option{background:#03004F;color:#fff;}
         </div>
       )}
 
-      {/* FLOATING BUTTON — aparece em todas as seções exceto Antes & Depois */}
-      {cl && currentSec?.id !== 'antes_depois' && sections.some(s => s.id === 'antes_depois') && (
-        <button
-          onClick={() => setSec(sections.findIndex(s => s.id === 'antes_depois'))}
-          style={{
-            position:'fixed', bottom:80, right:20, zIndex:180,
-            background:'rgba(5,158,30,.85)', border:'1px solid var(--tk-green)',
-            borderRadius:24, color:'#fff', fontFamily:"'Poppins',sans-serif",
-            fontSize:11, fontWeight:700, padding:'10px 16px',
-            cursor:'pointer', boxShadow:'0 4px 20px rgba(5,158,30,.4)',
-            display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap',
-          }}
-        >
-          📊 Atualizar Dados Pós-Implantação
-        </button>
-      )}
-      {page === 'report' && (
+      {/* REPORT PAGE */}
         <div className="report-layout">
           {loading ? (
             <div className="rpt-loader">
