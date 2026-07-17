@@ -1527,26 +1527,22 @@ select option{background:#03004F;color:#fff;}
         </div>
       )}
 
-      {/* FLOATING BUTTON — Atualizar Dados Pós-Implantação */}
-      {cl && currentSec?.id !== 'antes_depois' && (() => {
-        const adIdx = sections.findIndex(s => s.id === 'antes_depois')
-        return adIdx >= 0 ? (
-          <button
-            onClick={() => setSec(adIdx)}
-            style={{
-              position:'fixed', bottom:80, right:20, zIndex:180,
-              background:'rgba(5,158,30,.9)', border:'1px solid var(--tk-green)',
-              borderRadius:24, color:'#fff', fontFamily:"'Poppins',sans-serif",
-              fontSize:11, fontWeight:700, padding:'10px 16px',
-              cursor:'pointer', boxShadow:'0 4px 20px rgba(5,158,30,.4)',
-              display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap',
-              backdropFilter:'blur(8px)',
-            }}
-          >
-            📊 Atualizar Dados Pós-Implantação
-          </button>
-        ) : null
-      })()}
+      {/* FLOATING BUTTON — aparece em todas as seções exceto Antes & Depois */}
+      {cl && currentSec?.id !== 'antes_depois' && sections.some(s => s.id === 'antes_depois') && (
+        <button
+          onClick={() => setSec(sections.findIndex(s => s.id === 'antes_depois'))}
+          style={{
+            position:'fixed', bottom:80, right:20, zIndex:180,
+            background:'rgba(5,158,30,.85)', border:'1px solid var(--tk-green)',
+            borderRadius:24, color:'#fff', fontFamily:"'Poppins',sans-serif",
+            fontSize:11, fontWeight:700, padding:'10px 16px',
+            cursor:'pointer', boxShadow:'0 4px 20px rgba(5,158,30,.4)',
+            display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap',
+          }}
+        >
+          📊 Atualizar Dados Pós-Implantação
+        </button>
+      )}
       {page === 'report' && (
         <div className="report-layout">
           {loading ? (
