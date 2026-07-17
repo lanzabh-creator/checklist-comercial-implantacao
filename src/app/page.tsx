@@ -182,6 +182,12 @@ export default function Home() {
     }
   }
   const reportRef = useRef<HTMLDivElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
+
+  // Scroll to top when section changes
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [sec])
 
   const def = cl ? DEFS[cl] : null
   const sections = def?.sections ?? []
@@ -1394,7 +1400,7 @@ select option{background:#fff;color:var(--text);}
           </aside>
 
           {/* main */}
-          <main className="main" style={{ transition:'none' }}>
+          <main className="main" ref={mainRef} style={{ transition:'none' }}>
             {!cl ? (
               <div className="intro">
                 <div style={{ display:'flex',gap:7,marginBottom:18,alignItems:'center' }}>
@@ -1509,19 +1515,19 @@ select option{background:#fff;color:var(--text);}
                       </div>
                     </div>
                     {/* 2-column table */}
-                    <div style={{ overflowX:'auto' }}>
+                    <div style={{ overflowX:'auto', background:'#fff', borderRadius:12, border:'1.5px solid #DDE1EA', boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
                       <table style={{ width:'100%', borderCollapse:'collapse', minWidth:500 }}>
                         <thead>
                           <tr>
-                            <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'rgba(255,255,255,.4)', textTransform:'uppercase', letterSpacing:'1.5px', padding:'8px 12px', textAlign:'left', width:'30%', borderBottom:'1px solid rgba(255,255,255,.1)' }}>Indicador</th>
-                            <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'rgba(255,255,255,.6)', textTransform:'uppercase', letterSpacing:'1.5px', padding:'8px 12px', textAlign:'left', width:'35%', borderBottom:'1px solid rgba(255,255,255,.1)', background:'rgba(255,255,255,.04)' }}>🕐 Antes</th>
-                            <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'var(--tk-green)', textTransform:'uppercase', letterSpacing:'1.5px', padding:'8px 12px', textAlign:'left', width:'35%', borderBottom:'1px solid rgba(255,255,255,.1)', background:'rgba(5,158,30,.06)' }}>
+                            <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'#8B90A0', textTransform:'uppercase', letterSpacing:'1.5px', padding:'10px 12px', textAlign:'left', width:'22%', borderBottom:'2px solid #DDE1EA', background:'#F2F4F8' }}>Indicador</th>
+                            <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'#4B5063', textTransform:'uppercase', letterSpacing:'1.5px', padding:'10px 12px', textAlign:'left', width:'39%', borderBottom:'2px solid #DDE1EA', background:'#FAFBFC' }}>🕐 Antes</th>
+                            <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'#059E1E', textTransform:'uppercase', letterSpacing:'1.5px', padding:'10px 12px', textAlign:'left', width:'39%', borderBottom:'2px solid #86EFAC', background:'#F0FAF2' }}>
                               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, flexWrap:'wrap' }}>
                                 <span>✅ Depois</span>
                                 <button
                                   onClick={generateComparativeReport}
                                   disabled={comparativeLoading}
-                                  style={{ background:'var(--tk-green)', border:'none', borderRadius:6, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, padding:'5px 10px', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap', opacity: comparativeLoading ? .6 : 1 }}
+                                  style={{ background:'#059E1E', border:'none', borderRadius:6, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, padding:'5px 10px', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap', opacity: comparativeLoading ? .6 : 1 }}
                                 >
                                   {comparativeLoading ? '⏳ Gerando...' : '📄 Relatório Antes & Depois'}
                                 </button>
@@ -1537,32 +1543,32 @@ select option{background:#fff;color:var(--text);}
                             { label:'Nível de Desperdício', antes:'ad_desperdicio_antes', depois:'ad_desperdicio_depois', phA:'Ex: 12% da produção', phD:'Ex: 5% da produção' },
                             { label:'Ticket Médio de Vendas', antes:'ad_ticket_antes', depois:'ad_ticket_depois', phA:'Ex: R$ 42,00', phD:'Ex: R$ 58,00' },
                           ].map(row => (
-                            <tr key={row.antes} style={{ borderBottom:'1px solid rgba(255,255,255,.06)' }}>
-                              <td style={{ padding:'10px 12px', fontFamily:"'Poppins',sans-serif", fontSize:12, fontWeight:600, color:'rgba(255,255,255,.7)' }}>{row.label}</td>
-                              <td style={{ padding:'6px 12px', background:'rgba(255,255,255,.02)' }}>
+                            <tr key={row.antes} style={{ borderBottom:'1px solid #E5E9F0' }}>
+                              <td style={{ padding:'10px 12px', fontFamily:"'Poppins',sans-serif", fontSize:12, fontWeight:600, color:'#4B5063', width:'22%' }}>{row.label}</td>
+                              <td style={{ padding:'6px 12px', background:'#FAFBFC', width:'39%' }}>
                                 <input type="text" value={String(fd[row.antes] || '')} placeholder={row.phA}
                                   onChange={e => setField(row.antes, e.target.value)}
-                                  style={{ background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.14)', borderRadius:6, color:'#fff', fontFamily:'Roboto,sans-serif', fontSize:12, padding:'7px 10px', width:'100%', outline:'none' }} />
+                                  style={{ background:'#fff', border:'1.5px solid #DDE1EA', borderRadius:6, color:'#1A1D2E', fontFamily:'Roboto,sans-serif', fontSize:13, padding:'8px 11px', width:'100%', outline:'none' }} />
                               </td>
-                              <td style={{ padding:'6px 12px', background:'rgba(5,158,30,.04)' }}>
+                              <td style={{ padding:'6px 12px', background:'#F0FAF2', width:'39%' }}>
                                 <input type="text" value={String(fd[row.depois] || '')} placeholder={row.phD}
                                   onChange={e => setField(row.depois, e.target.value)}
-                                  style={{ background:'rgba(5,158,30,.08)', border:'1px solid rgba(5,158,30,.25)', borderRadius:6, color:'#fff', fontFamily:'Roboto,sans-serif', fontSize:12, padding:'7px 10px', width:'100%', outline:'none' }} />
+                                  style={{ background:'#fff', border:'1.5px solid #86EFAC', borderRadius:6, color:'#1A1D2E', fontFamily:'Roboto,sans-serif', fontSize:13, padding:'8px 11px', width:'100%', outline:'none' }} />
                               </td>
                             </tr>
                           ))}
                           {/* Observations row */}
-                          <tr style={{ borderBottom:'1px solid rgba(255,255,255,.06)' }}>
-                            <td style={{ padding:'10px 12px', fontFamily:"'Poppins',sans-serif", fontSize:12, fontWeight:600, color:'rgba(255,255,255,.7)', verticalAlign:'top' }}>Observações</td>
-                            <td style={{ padding:'6px 12px', background:'rgba(255,255,255,.02)', verticalAlign:'top' }}>
+                          <tr style={{ borderBottom:'1px solid #E5E9F0' }}>
+                            <td style={{ padding:'10px 12px', fontFamily:"'Poppins',sans-serif", fontSize:12, fontWeight:600, color:'#4B5063', verticalAlign:'top' }}>Observações</td>
+                            <td style={{ padding:'6px 12px', background:'#FAFBFC', verticalAlign:'top' }}>
                               <textarea value={String(fd['ad_obs_antes'] || '')} placeholder="Outros indicadores ou contexto relevante do momento pré-implantação..."
                                 onChange={e => setField('ad_obs_antes', e.target.value)}
-                                style={{ background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.14)', borderRadius:6, color:'#fff', fontFamily:'Roboto,sans-serif', fontSize:12, padding:'7px 10px', width:'100%', outline:'none', minHeight:72, resize:'vertical' }} />
+                                style={{ background:'#fff', border:'1.5px solid #DDE1EA', borderRadius:6, color:'#1A1D2E', fontFamily:'Roboto,sans-serif', fontSize:13, padding:'8px 11px', width:'100%', outline:'none', minHeight:80, resize:'vertical' }} />
                             </td>
-                            <td style={{ padding:'6px 12px', background:'rgba(5,158,30,.04)', verticalAlign:'top' }}>
+                            <td style={{ padding:'6px 12px', background:'#F0FAF2', verticalAlign:'top' }}>
                               <textarea value={String(fd['ad_obs_depois'] || '')} placeholder="Outros resultados ou contexto relevante após a implantação..."
                                 onChange={e => setField('ad_obs_depois', e.target.value)}
-                                style={{ background:'rgba(5,158,30,.08)', border:'1px solid rgba(5,158,30,.25)', borderRadius:6, color:'#fff', fontFamily:'Roboto,sans-serif', fontSize:12, padding:'7px 10px', width:'100%', outline:'none', minHeight:72, resize:'vertical' }} />
+                                style={{ background:'#fff', border:'1.5px solid #86EFAC', borderRadius:6, color:'#1A1D2E', fontFamily:'Roboto,sans-serif', fontSize:13, padding:'8px 11px', width:'100%', outline:'none', minHeight:80, resize:'vertical' }} />
                             </td>
                           </tr>
                         </tbody>
