@@ -489,6 +489,110 @@ export default function Home() {
   }
 
   const [checklistPdfLoading, setChecklistPdfLoading] = useState(false)
+  const [comparativeLoading, setComparativeLoading] = useState(false)
+
+  const generateComparativeReport = async () => {
+    if (!def) return
+    setComparativeLoading(true)
+    setPage('report')
+    setLoading(true)
+    setReportHtml('')
+    setReportMd('')
+    const client = String(fd['razao_social'] || 'Cliente')
+
+    const antes = {
+      faturamento: String(fd['ad_fat_antes'] || 'Não informado'),
+      margem: String(fd['ad_margem_antes'] || 'Não informado'),
+      cmv: String(fd['ad_cmv_antes'] || 'Não informado'),
+      desperdicio: String(fd['ad_desperdicio_antes'] || 'Não informado'),
+      ticket: String(fd['ad_ticket_antes'] || 'Não informado'),
+      obs: String(fd['ad_obs_antes'] || ''),
+    }
+    const depois = {
+      faturamento: String(fd['ad_fat_depois'] || 'Não informado'),
+      margem: String(fd['ad_margem_depois'] || 'Não informado'),
+      cmv: String(fd['ad_cmv_depois'] || 'Não informado'),
+      desperdicio: String(fd['ad_desperdicio_depois'] || 'Não informado'),
+      ticket: String(fd['ad_ticket_depois'] || 'Não informado'),
+      obs: String(fd['ad_obs_depois'] || ''),
+    }
+
+    const prompt = `Você é um analista sênior de resultados da Teknisa — empresa líder em software de gestão para food service, indústrias de alimentos e serviços de nutrição.
+
+Analise o impacto da implantação dos sistemas Teknisa no cliente "${client}" com base nos indicadores antes e depois informados abaixo. Gere um RELATÓRIO COMPARATIVO DE RESULTADOS completo, analítico e executivo.
+
+CLIENTE: ${client}
+SEGMENTO: ${def.label}
+
+INDICADORES ANTES DA IMPLANTAÇÃO:
+- Faturamento: ${antes.faturamento}
+- Margem Operacional: ${antes.margem}
+- CMV: ${antes.cmv}
+- Nível de Desperdício: ${antes.desperdicio}
+- Ticket Médio de Vendas: ${antes.ticket}
+${antes.obs ? `- Contexto adicional: ${antes.obs}` : ''}
+
+INDICADORES DEPOIS DA IMPLANTAÇÃO:
+- Faturamento: ${depois.faturamento}
+- Margem Operacional: ${depois.margem}
+- CMV: ${depois.cmv}
+- Nível de Desperdício: ${depois.desperdicio}
+- Ticket Médio de Vendas: ${depois.ticket}
+${depois.obs ? `- Contexto adicional: ${depois.obs}` : ''}
+
+Estruture o relatório com exatamente estas seções (use ## para seções e ### para subseções):
+
+## RELATÓRIO COMPARATIVO DE RESULTADOS — ${client}
+[Subtítulo: "Impacto da Implantação Teknisa — ${def.label}"]
+[Parágrafo introdutório de 3-4 linhas contextualizando o cliente e o projeto]
+
+---
+## 1. PANORAMA GERAL DOS RESULTADOS
+[Resumo executivo de 4-6 linhas com a visão geral do impacto. Destaque os ganhos mais expressivos.]
+
+---
+## 2. ANÁLISE INDICADOR A INDICADOR
+### Faturamento
+[Análise da variação, causas prováveis e impacto no negócio]
+### Margem Operacional
+[Análise da variação, causas prováveis e impacto]
+### CMV (Custo da Mercadoria Vendida)
+[Análise da variação e relação com os demais indicadores]
+### Nível de Desperdício
+[Análise da variação e impacto financeiro estimado]
+### Ticket Médio de Vendas
+[Análise da variação e fatores que contribuíram]
+
+---
+## 3. CORRELAÇÕES E INSIGHTS
+[Identifique relações entre os indicadores. Ex: queda do CMV contribuiu para alta da margem. Seja analítico e específico com os números apresentados.]
+
+---
+## 4. FATORES DE SUCESSO DA IMPLANTAÇÃO
+[Liste de 4 a 6 fatores que provavelmente explicam os resultados alcançados, com base nos dados]
+
+---
+## 5. OPORTUNIDADES IDENTIFICADAS
+[Com base nos resultados, quais são as próximas oportunidades de melhoria ou expansão do uso do sistema? Liste de 3 a 5 oportunidades concretas]
+
+---
+## 6. CONCLUSÃO EXECUTIVA
+[Parágrafo final de 4-6 linhas com a síntese do impacto e o valor gerado pela Teknisa para este cliente. Tom de caso de sucesso.]
+
+> [Frase de impacto resumindo o resultado em uma linha]
+
+Seja específico com os números. Compare os valores antes e depois em cada análise. Tom executivo e orientado a resultados.`
+
+    try {
+      const text = await callClaude(prompt, false, 3000)
+      setReportMd(text)
+      setReportHtml(mdToHtml(text))
+    } catch {
+      setReportHtml('<p style="color:#e84d4d">Erro ao gerar relatório comparativo. Tente novamente.</p>')
+    }
+    setLoading(false)
+    setComparativeLoading(false)
+  }
 
   const exportChecklistPDF = async () => {
     if (!def) return
@@ -1152,7 +1256,7 @@ select option{background:#03004F;color:#fff;}
           <div className="hdr-client">Cliente: <strong>{clientName}</strong></div>
           <div className="status-pill"><span className="sdot" />Sistema Ativo</div>
           <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:9, fontWeight:700, color:'rgba(244,184,0,.7)', background:'rgba(244,184,0,.08)', border:'1px solid rgba(244,184,0,.2)', borderRadius:20, padding:'3px 9px', letterSpacing:'0.5px', whiteSpace:'nowrap' }}>
-            v0.9.0-beta
+            v0.10.0-beta
           </div>
           <button className="mob-menu-btn" onClick={() => setSidebarOpen(o => !o)} aria-label="Menu">☰</button>
         </div>
@@ -1315,6 +1419,80 @@ select option{background:#03004F;color:#fff;}
                   </div>
                 )}
 
+                {/* ANTES & DEPOIS — layout especial em 2 colunas */}
+                {currentSec?.id === 'antes_depois' ? (
+                  <div>
+                    {/* Info banner */}
+                    <div className="res-banner" style={{ borderColor:'rgba(244,184,0,.3)', background:'rgba(244,184,0,.06)', marginBottom:20 }}>
+                      <div className="rb-icon">📊</div>
+                      <div className="rb-txt">
+                        <strong>Como usar:</strong> preencha a coluna <strong>Antes</strong> agora, no início do projeto. A coluna <strong>Depois</strong> deve ser preenchida meses após a implantação. Use o botão <strong>"Atualizar Dados Pós-Implantação"</strong> na tela principal para acessar esta seção depois.
+                      </div>
+                    </div>
+                    {/* 2-column table */}
+                    <div style={{ overflowX:'auto' }}>
+                      <table style={{ width:'100%', borderCollapse:'collapse', minWidth:500 }}>
+                        <thead>
+                          <tr>
+                            <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'rgba(255,255,255,.4)', textTransform:'uppercase', letterSpacing:'1.5px', padding:'8px 12px', textAlign:'left', width:'30%', borderBottom:'1px solid rgba(255,255,255,.1)' }}>Indicador</th>
+                            <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'rgba(255,255,255,.6)', textTransform:'uppercase', letterSpacing:'1.5px', padding:'8px 12px', textAlign:'left', width:'35%', borderBottom:'1px solid rgba(255,255,255,.1)', background:'rgba(255,255,255,.04)' }}>🕐 Antes</th>
+                            <th style={{ fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:700, color:'var(--tk-green)', textTransform:'uppercase', letterSpacing:'1.5px', padding:'8px 12px', textAlign:'left', width:'35%', borderBottom:'1px solid rgba(255,255,255,.1)', background:'rgba(5,158,30,.06)' }}>✅ Depois</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { label:'Faturamento', antes:'ad_fat_antes', depois:'ad_fat_depois', phA:'Ex: R$ 2,5 milhões/mês', phD:'Ex: R$ 3,1 milhões/mês' },
+                            { label:'Margem Operacional', antes:'ad_margem_antes', depois:'ad_margem_depois', phA:'Ex: 18%', phD:'Ex: 23%' },
+                            { label:'CMV', antes:'ad_cmv_antes', depois:'ad_cmv_depois', phA:'Ex: 35%', phD:'Ex: 28%' },
+                            { label:'Nível de Desperdício', antes:'ad_desperdicio_antes', depois:'ad_desperdicio_depois', phA:'Ex: 12% da produção', phD:'Ex: 5% da produção' },
+                            { label:'Ticket Médio de Vendas', antes:'ad_ticket_antes', depois:'ad_ticket_depois', phA:'Ex: R$ 42,00', phD:'Ex: R$ 58,00' },
+                          ].map(row => (
+                            <tr key={row.antes} style={{ borderBottom:'1px solid rgba(255,255,255,.06)' }}>
+                              <td style={{ padding:'10px 12px', fontFamily:"'Poppins',sans-serif", fontSize:12, fontWeight:600, color:'rgba(255,255,255,.7)' }}>{row.label}</td>
+                              <td style={{ padding:'6px 12px', background:'rgba(255,255,255,.02)' }}>
+                                <input type="text" value={String(fd[row.antes] || '')} placeholder={row.phA}
+                                  onChange={e => setField(row.antes, e.target.value)}
+                                  style={{ background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.14)', borderRadius:6, color:'#fff', fontFamily:'Roboto,sans-serif', fontSize:12, padding:'7px 10px', width:'100%', outline:'none' }} />
+                              </td>
+                              <td style={{ padding:'6px 12px', background:'rgba(5,158,30,.04)' }}>
+                                <input type="text" value={String(fd[row.depois] || '')} placeholder={row.phD}
+                                  onChange={e => setField(row.depois, e.target.value)}
+                                  style={{ background:'rgba(5,158,30,.08)', border:'1px solid rgba(5,158,30,.25)', borderRadius:6, color:'#fff', fontFamily:'Roboto,sans-serif', fontSize:12, padding:'7px 10px', width:'100%', outline:'none' }} />
+                              </td>
+                            </tr>
+                          ))}
+                          {/* Observations row */}
+                          <tr style={{ borderBottom:'1px solid rgba(255,255,255,.06)' }}>
+                            <td style={{ padding:'10px 12px', fontFamily:"'Poppins',sans-serif", fontSize:12, fontWeight:600, color:'rgba(255,255,255,.7)', verticalAlign:'top' }}>Observações</td>
+                            <td style={{ padding:'6px 12px', background:'rgba(255,255,255,.02)', verticalAlign:'top' }}>
+                              <textarea value={String(fd['ad_obs_antes'] || '')} placeholder="Outros indicadores ou contexto relevante do momento pré-implantação..."
+                                onChange={e => setField('ad_obs_antes', e.target.value)}
+                                style={{ background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.14)', borderRadius:6, color:'#fff', fontFamily:'Roboto,sans-serif', fontSize:12, padding:'7px 10px', width:'100%', outline:'none', minHeight:72, resize:'vertical' }} />
+                            </td>
+                            <td style={{ padding:'6px 12px', background:'rgba(5,158,30,.04)', verticalAlign:'top' }}>
+                              <textarea value={String(fd['ad_obs_depois'] || '')} placeholder="Outros resultados ou contexto relevante após a implantação..."
+                                onChange={e => setField('ad_obs_depois', e.target.value)}
+                                style={{ background:'rgba(5,158,30,.08)', border:'1px solid rgba(5,158,30,.25)', borderRadius:6, color:'#fff', fontFamily:'Roboto,sans-serif', fontSize:12, padding:'7px 10px', width:'100%', outline:'none', minHeight:72, resize:'vertical' }} />
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    {/* Comparative report button — only shown if Depois has data */}
+                    {(fd['ad_fat_depois'] || fd['ad_margem_depois'] || fd['ad_cmv_depois'] || fd['ad_desperdicio_depois'] || fd['ad_ticket_depois']) && (
+                      <div style={{ marginTop:20, padding:'14px 16px', background:'rgba(5,158,30,.08)', border:'1px solid rgba(5,158,30,.25)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+                        <div>
+                          <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:12, fontWeight:700, color:'var(--tk-green)' }}>✅ Dados pós-implantação detectados</div>
+                          <div style={{ fontFamily:'Roboto,sans-serif', fontSize:11, color:'rgba(255,255,255,.5)', marginTop:3 }}>Gere um Relatório Comparativo para analisar o impacto da implantação Teknisa</div>
+                        </div>
+                        <button className="btn" style={{ background:'var(--tk-green)', color:'#fff', fontWeight:700, fontSize:13, border:'none', flexShrink:0 }}
+                          onClick={generateComparativeReport}>
+                          {comparativeLoading ? '⏳ Gerando...' : '📈 Gerar Relatório Comparativo'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
                 <div className="fg">
                   {currentSec?.fields.map(f => {
                     // Hide coord_projeto detail fields unless coord_projeto = Sim
@@ -1326,6 +1504,7 @@ select option{background:#03004F;color:#fff;}
                     return renderField(f)
                   })}
                 </div>
+                )}
 
                 <div className="form-nav">
                   <button className="btn btn-ghost" disabled={sec === 0} onClick={() => setSec(s => s - 1)}>← Anterior</button>
@@ -1348,7 +1527,26 @@ select option{background:#03004F;color:#fff;}
         </div>
       )}
 
-      {/* REPORT PAGE */}
+      {/* FLOATING BUTTON — Atualizar Dados Pós-Implantação */}
+      {cl && currentSec?.id !== 'antes_depois' && (() => {
+        const adIdx = sections.findIndex(s => s.id === 'antes_depois')
+        return adIdx >= 0 ? (
+          <button
+            onClick={() => setSec(adIdx)}
+            style={{
+              position:'fixed', bottom:80, right:20, zIndex:180,
+              background:'rgba(5,158,30,.9)', border:'1px solid var(--tk-green)',
+              borderRadius:24, color:'#fff', fontFamily:"'Poppins',sans-serif",
+              fontSize:11, fontWeight:700, padding:'10px 16px',
+              cursor:'pointer', boxShadow:'0 4px 20px rgba(5,158,30,.4)',
+              display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap',
+              backdropFilter:'blur(8px)',
+            }}
+          >
+            📊 Atualizar Dados Pós-Implantação
+          </button>
+        ) : null
+      })()}
       {page === 'report' && (
         <div className="report-layout">
           {loading ? (
