@@ -1538,6 +1538,7 @@ select option{background:#03004F;color:#fff;}
       )}
 
       {/* REPORT PAGE */}
+      {page === 'report' && (
         <div className="report-layout">
           {loading ? (
             <div className="rpt-loader">
