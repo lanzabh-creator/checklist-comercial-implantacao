@@ -333,10 +333,12 @@ export default function Home() {
   const reportRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLElement>(null)
 
-  // Scroll to top when section changes
+  // Scroll to top when section changes + mantém item ativo visível na sidebar
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
     window.scrollTo({ top: 0, behavior: 'smooth' })
+    const activeNavEl = document.querySelector(`.nav-it[data-nav-idx="${sec}"]`)
+    if (activeNavEl) activeNavEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [sec])
 
   const def = cl ? DEFS[cl] : null
@@ -1685,7 +1687,7 @@ select option{background:#fff;color:var(--text);}
               </div>
               <div className="sec-nav">
                 {sections.map((s, i) => (
-                  <div key={s.id} className={`nav-it${sec===i?' active':''}`} onClick={() => { setSec(i); setSidebarOpen(false) }} title={s.title}>
+                  <div key={s.id} className={`nav-it${sec===i?' active':''}`} data-nav-idx={i} onClick={() => { setSec(i); setSidebarOpen(false) }} title={s.title}>
                     <span className="nav-num">{String(i+1).padStart(2,'0')}</span>
                     <span className="nav-label">{s.title}</span>
                     {isSectionDone(i) && <span className="nav-ck">✓</span>}
