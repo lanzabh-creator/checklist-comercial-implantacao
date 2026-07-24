@@ -450,6 +450,18 @@ export default function Home() {
         return
       }
     }
+    // ERP — Levantamento Comercial: exige descrição detalhada (mín. 300 caracteres) se houver alertas além de "Nenhum alerta"
+    if (cl === 'erp' && currentSec?.id === 'levantamento') {
+      const alertasSel = (fd['alertas'] as string[] | undefined) || []
+      const hasRealAlert = alertasSel.some(a => a !== 'Nenhum alerta')
+      if (hasRealAlert) {
+        const desc = String(fd['alertas_desc'] || '').trim()
+        if (desc.length < 300) {
+          alert(`⚠️ A "Descrição dos alertas identificados" precisa ter no mínimo 300 caracteres, detalhando os alertas marcados.\n\nCaracteres atuais: ${desc.length}/300`)
+          return
+        }
+      }
+    }
     setSec(s => s + 1)
   }
 
@@ -1132,12 +1144,22 @@ strong{color:#1a1a2e;font-weight:700;}
         <input type={f.type} value={vs} placeholder={f.ph} onChange={e => setField(f.id, e.target.value)} />
       </div>
     )
-    if (f.type === 'textarea') return (
-      <div key={f.id} className="fgrp s2">
-        <label className="lbl">{f.label}</label>
-        <textarea value={vs} placeholder={f.ph} onChange={e => setField(f.id, e.target.value)} />
-      </div>
-    )
+    if (f.type === 'textarea') {
+      const showCounter = cl === 'erp' && currentSec?.id === 'levantamento' && f.id === 'alertas_desc'
+      const alertasSel = (fd['alertas'] as string[] | undefined) || []
+      const needsCounter = showCounter && alertasSel.some(a => a !== 'Nenhum alerta')
+      return (
+        <div key={f.id} className="fgrp s2">
+          <label className="lbl">{f.label}</label>
+          <textarea value={vs} placeholder={f.ph} onChange={e => setField(f.id, e.target.value)} />
+          {needsCounter && (
+            <div style={{ fontSize:10, color: vs.length >= 300 ? 'var(--tk-green)' : '#8B90A0', fontFamily:"'Roboto',sans-serif", textAlign:'right' }}>
+              {vs.length}/300 caracteres mínimos {vs.length >= 300 ? '✓' : ''}
+            </div>
+          )}
+        </div>
+      )
+    }
     if (f.type === 'select') return (
       <div key={f.id} className="fgrp">
         <label className="lbl">{f.label}</label>
@@ -1150,7 +1172,7 @@ strong{color:#1a1a2e;font-weight:700;}
       <div key={f.id} className="fgrp s2">
         <label className="lbl">{f.label}</label>
         <div className="chips-grp">
-          {f.opts?.map(o => <span key={o} className={`chip${vArr.includes(o) ? ' on' : ''}`} onClick={() => toggleChip(f.id, o)}>{o}</span>)}
+          {f.opts?.map(o => <span key={o} className={`chip${vArr.includes(o) ? ' on' : ''}`} title={f.tooltips?.[o] || ''} onClick={() => toggleChip(f.id, o)}>{o}</span>)}
         </div>
       </div>
     )
@@ -1164,7 +1186,7 @@ strong{color:#1a1a2e;font-weight:700;}
         <div key={f.id} className="fgrp s2">
           <label className="lbl">{f.label}</label>
           <div className="chips-grp">
-            {f.opts?.map(o => <span key={o} className={`chip${vArr.includes(o) ? ' on' : ''}`} onClick={() => toggleChip(f.id, o)}>{o}</span>)}
+            {f.opts?.map(o => <span key={o} className={`chip${vArr.includes(o) ? ' on' : ''}`} title={f.tooltips?.[o] || ''} onClick={() => toggleChip(f.id, o)}>{o}</span>)}
           </div>
           {isCondActive && (
             <div style={{ marginTop: 8 }}>
@@ -1223,6 +1245,68 @@ strong{color:#1a1a2e;font-weight:700;}
         </div>
       </div>
     )
+    // radio_master: toggle that bulk-fills related fields with "Não se aplica" when set to "Não"
+    if (f.type === 'radio_master') return (
+      <div key={f.id} className="fgrp s2">
+        <label className="lbl">{f.label}</label>
+        <div className="radio-grp">
+          {f.opts?.map(o => (
+            <span key={o} className={`radio-opt${vs === o ? ' on' : ''}`} onClick={() => {
+              setField(f.id, o)
+              if (o === 'Não' && f.affects) {
+                setFd(prev => {
+                  const next = { ...prev }
+                  f.affects!.forEach(fieldId => { next[fieldId] = 'Não se aplica' })
+                  return next
+                })
+              }
+            }}>{o}</span>
+          ))}
+        </div>
+        {vs === 'Não' && (
+          <div style={{ marginTop: 6, fontSize: 10, color: '#8B90A0', fontFamily: "'Roboto',sans-serif" }}>
+            Os demais campos desta seção foram marcados como "Não se aplica". Você pode alterá-los manualmente a qualquer momento.
+          </div>
+        )}
+      </div>
+    )
+    // category_periodicity: two-column layout — category chips + periodicity dropdown per selected category
+    if (f.type === 'category_periodicity') {
+      const selectedCats = vArr
+      return (
+        <div key={f.id} className="fgrp s2">
+          <label className="lbl">{f.label}</label>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginTop:6 }}>
+            <div>
+              <div style={{ fontSize:9, fontWeight:700, color:'#8B90A0', textTransform:'uppercase', letterSpacing:'.8px', marginBottom:6, fontFamily:"'Poppins',sans-serif" }}>Categoria</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {f.categories?.map(cat => (
+                  <span key={cat} className={`chip${selectedCats.includes(cat) ? ' on' : ''}`} style={{ textAlign:'left', justifyContent:'flex-start' }} onClick={() => toggleChip(f.id, cat)}>{cat}</span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize:9, fontWeight:700, color:'#8B90A0', textTransform:'uppercase', letterSpacing:'.8px', marginBottom:6, fontFamily:"'Poppins',sans-serif" }}>Periodicidade</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {f.categories?.map(cat => {
+                  const perKey = `${f.id}_per_${cat.replace(/[^a-zA-Z0-9]/g, '')}`
+                  const isEnabled = selectedCats.includes(cat)
+                  const perVal = String(fd[perKey] || '')
+                  return (
+                    <select key={cat} disabled={!isEnabled} value={perVal}
+                      onChange={e => setField(perKey, e.target.value)}
+                      style={{ opacity: isEnabled ? 1 : .4, cursor: isEnabled ? 'pointer' : 'not-allowed', height:34 }}>
+                      <option value="">{isEnabled ? 'Selecione...' : '—'}</option>
+                      {f.periodicities?.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
     if (f.type === 'radio_conditional') {
       const triggers = (f.conditionalOpt || '').split('|')
       const isTrig = triggers.includes(vs)
@@ -1637,7 +1721,7 @@ select option{background:#fff;color:var(--text);}
           <div className="hdr-client">Cliente: <strong>{clientName}</strong></div>
           <div className="status-pill"><span className="sdot" />Sistema Ativo</div>
           <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:9, fontWeight:700, color:'rgba(244,184,0,.7)', background:'rgba(244,184,0,.08)', border:'1px solid rgba(244,184,0,.2)', borderRadius:20, padding:'3px 9px', letterSpacing:'0.5px', whiteSpace:'nowrap' }}>
-            v0.13.4-beta
+            v0.14.0-beta
           </div>
         </div>
       </header>
