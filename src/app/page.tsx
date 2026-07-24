@@ -961,9 +961,13 @@ strong{color:#1a1a2e;font-weight:700;}
   .sec-h2{page-break-after:avoid;}
   body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 }
+.print-btn{position:fixed;top:20px;right:20px;background:#040486;color:#fff;border:none;border-radius:8px;padding:11px 20px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(4,4,134,.35);display:flex;align-items:center;gap:7px;z-index:999;transition:background .15s;}
+.print-btn:hover{background:#0800B7;}
+@media print{.print-btn{display:none;}}
 </style>
 </head>
 <body>
+<button class="print-btn" onclick="window.print()">🖨️ Imprimir</button>
 <div class="wrap">
 
   <!-- CAPA -->
@@ -973,6 +977,7 @@ strong{color:#1a1a2e;font-weight:700;}
     <div class="cover-sub">${def.label}</div>
     <div class="cover-meta">
       <div class="cover-field"><span class="cover-field-label">Cliente</span><span class="cover-field-value">${client}</span></div>
+      <div class="cover-field"><span class="cover-field-label">Analista</span><span class="cover-field-value">${String(fd['consultor_nome'] || '—')}</span></div>
       <div class="cover-field"><span class="cover-field-label">Data</span><span class="cover-field-value">${date}</span></div>
       <div class="cover-field"><span class="cover-field-label">Preenchimento</span><span class="cover-field-value">${pct}%</span></div>
       <div class="cover-field"><span class="cover-field-label">Risco Global</span><span class="cover-field-value"><span class="risco-badge" style="color:${riscoColor}">${risco}</span></span></div>
@@ -1591,7 +1596,7 @@ select option{background:#fff;color:var(--text);}
           <div className="hdr-client">Cliente: <strong>{clientName}</strong></div>
           <div className="status-pill"><span className="sdot" />Sistema Ativo</div>
           <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:9, fontWeight:700, color:'rgba(244,184,0,.7)', background:'rgba(244,184,0,.08)', border:'1px solid rgba(244,184,0,.2)', borderRadius:20, padding:'3px 9px', letterSpacing:'0.5px', whiteSpace:'nowrap' }}>
-            v0.13.1-beta
+            v0.13.2-beta
           </div>
         </div>
       </header>
