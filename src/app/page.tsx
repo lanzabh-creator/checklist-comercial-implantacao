@@ -195,30 +195,51 @@ export default function Home() {
     if (!to) { alert('⚠️ Preencha o campo "Email Analista Comercial" na página 1 antes de enviar.'); return }
     if (!def) return
     setEmailSending(true)
-    const client = String(fd['razao_social'] || 'Cliente')
-    const subject = `Checklist ${def.label} — ${client}`
+
+    // Gera o relatório completo (campos + análise de riscos) para anexar
+    const result = await buildChecklistReportHtml()
+    if (!result) { setEmailSending(false); return }
+    const { fullHtml, client, safeClientName } = result
+
+    const subject = `Relatório — Checklist ${def.label} — ${client}`
     const bodyLines = [
       `Olá,`,
       ``,
-      `O checklist comercial de implantação do cliente "${client}" foi preenchido no sistema Teknisa Intelligence Comercial.`,
+      `Segue em anexo o relatório completo do checklist comercial de implantação do cliente "${client}", preenchido no sistema Teknisa Intelligence Comercial.`,
       ``,
       `Tipo de checklist: ${def.label}`,
       `Data de preenchimento: ${new Date().toLocaleDateString('pt-BR')}`,
       `Percentual preenchido: ${pct}%`,
       `Classificação de risco: ${String(fd['risco'] || 'Não informado')}`,
       ``,
-      `Acesse o sistema para visualizar o relatório completo, a análise de riscos e os documentos anexados na pasta do Google Drive do cliente.`,
+      `O anexo contém os dados preenchidos e a análise de riscos e pontos de atenção para a equipe de implantação.`,
       ``,
       `Este e-mail foi enviado automaticamente pelo sistema Teknisa Intelligence Comercial.`,
     ]
     const body = bodyLines.join('\r\n')
+
+    // ── Monta e-mail multipart com o relatório em anexo ─────────
+    const boundary = `teknisa_${Date.now()}`
+    const attachmentB64 = btoa(unescape(encodeURIComponent(fullHtml)))
     const emailRaw = [
       `To: ${to}`,
       `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
       'MIME-Version: 1.0',
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      '',
+      `--${boundary}`,
       'Content-Type: text/plain; charset="UTF-8"',
       '',
       body,
+      '',
+      `--${boundary}`,
+      'Content-Type: text/html; charset="UTF-8"',
+      `Content-Disposition: attachment; filename="Relatorio_Checklist_${safeClientName}.html"`,
+      'Content-Transfer-Encoding: base64',
+      '',
+      attachmentB64,
+      '',
+      `--${boundary}--`,
     ].join('\r\n')
     const encoded = btoa(unescape(encodeURIComponent(emailRaw))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
@@ -795,9 +816,9 @@ Seja específico com os números. Compare os valores antes e depois em cada aná
     setComparativeLoading(false)
   }
 
-  const exportChecklistPDF = async () => {
-    if (!def) return
-    setChecklistPdfLoading(true)
+  // ── Monta o relatório completo (campos + análise IA) — reutilizado pelo PDF e pelo e-mail ──
+  const buildChecklistReportHtml = async (): Promise<{ fullHtml: string; client: string; safeClientName: string } | null> => {
+    if (!def) return null
     const client = String(fd['razao_social'] || 'Cliente')
     const date = new Date().toLocaleDateString('pt-BR')
 
@@ -885,9 +906,10 @@ Seja específico com os dados do cliente. Evite generalidades. Tom técnico e di
       fieldsHtml += `</table></div>`
     })
 
-    // ── 5. Monta o HTML completo (reutilizado para impressão e ZIP) ──
+    // ── 5. Monta o HTML completo ────────────────────────────
     const risco = String(fd['risco'] || '—')
     const riscoColor = risco === 'Alto' ? '#c0392b' : risco === 'Médio' ? '#e67e22' : '#27ae60'
+    const safeClientName = client.replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').trim().replace(/\s+/g, '_')
 
     const fullHtml = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -974,17 +996,27 @@ strong{color:#1a1a2e;font-weight:700;}
 </body>
 </html>`
 
-    // ── 6. Abre janela de impressão ───────────────────────────
+    return { fullHtml, client, safeClientName }
+  }
+
+  const exportChecklistPDF = async () => {
+    if (!def) return
+    setChecklistPdfLoading(true)
+
+    const result = await buildChecklistReportHtml()
+    if (!result) { setChecklistPdfLoading(false); return }
+    const { fullHtml, safeClientName } = result
+
+    // ── Abre janela de impressão ───────────────────────────
     const w = window.open('', '_blank')
     if (w) {
       w.document.write(fullHtml.replace('</body>', '<script>setTimeout(()=>window.print(),800);<\\/script></body>'))
       w.document.close()
     }
 
-    // ── 7. Monta ZIP com relatório + documentos do Google Drive ──
+    // ── Monta ZIP com relatório + documentos do Google Drive ──
     try {
       const zip = new JSZip()
-      const safeClientName = client.replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').trim().replace(/\s+/g, '_')
       zip.file(`Relatorio_Checklist_${safeClientName}.html`, fullHtml)
 
       if (gDriveToken) {
@@ -1559,7 +1591,7 @@ select option{background:#fff;color:var(--text);}
           <div className="hdr-client">Cliente: <strong>{clientName}</strong></div>
           <div className="status-pill"><span className="sdot" />Sistema Ativo</div>
           <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:9, fontWeight:700, color:'rgba(244,184,0,.7)', background:'rgba(244,184,0,.08)', border:'1px solid rgba(244,184,0,.2)', borderRadius:20, padding:'3px 9px', letterSpacing:'0.5px', whiteSpace:'nowrap' }}>
-            v0.13.0-beta
+            v0.13.1-beta
           </div>
         </div>
       </header>
@@ -1830,7 +1862,7 @@ select option{background:#fff;color:var(--text);}
                           disabled={emailSending}
                           style={{ background:'#fff', border:'1.5px solid var(--tk-primary)', color:'var(--tk-primary)', fontWeight:700 }}
                         >
-                          {emailSending ? '⏳ Enviando...' : '✉️ Enviar por email p/ Analista'}
+                          {emailSending ? '⏳ Gerando relatório...' : '✉️ Enviar por email p/ Analista'}
                         </button>
                         <button
                           className="btn btn-gen"
