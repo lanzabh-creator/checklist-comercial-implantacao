@@ -2,6 +2,7 @@ export type FieldType =
   | 'text' | 'number' | 'textarea' | 'select' | 'radio'
   | 'chips' | 'radio_conditional' | 'chips_conditional'
   | 'regime_dynamic' | 'risk' | 'risk_tooltip' | 'pdf_upload' | 'drive_upload'
+  | 'radio_master' | 'category_periodicity'
 
 export interface ConditionalField {
   id: string
@@ -18,6 +19,10 @@ export interface Field {
   opts?: string[]
   conditionalOpt?: string
   conditionalField?: ConditionalField
+  tooltips?: Record<string, string>
+  affects?: string[]
+  categories?: string[]
+  periodicities?: string[]
 }
 
 export interface Section {
@@ -196,7 +201,15 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'almoxarifado', label: 'Trabalham com almoxarifado? Quantos e quais?', type: 'text', ph: 'Ex: 2 almoxarifados — central e cozinha / Não' },
           { id: 'unidade_medida_diff', label: 'Produtos comprados em unidade diferente da consumida?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'estoque_cnpj_diff', label: 'Estoques físicos iguais com CNPJs fiscalmente separados?', type: 'radio', opts: ['Sim','Não'] },
-          { id: 'estoque_ctrl', label: 'Controles de Estoque utilizados', type: 'chips', opts: ['Curva ABC','Lote/validade','Transferência entre lojas','WMS','FEFO/FIFO'] },
+          { id: 'estoque_ctrl', label: 'Controles de Estoque utilizados', type: 'chips_conditional', opts: ['FIFO','FEFO','LIFO','HIFO','LOFO','Transferência Entre Lojas','Curva ABC','Outros'], conditionalOpt: 'Outros', conditionalField: { id: 'estoque_ctrl_outros', label: 'Descreva o outro método utilizado', type: 'text', ph: 'Descreva o método...' }, tooltips: {
+            'FIFO': 'First In, First Out — Primeiro que entra, primeiro que sai. Ideal para produtos perecíveis ou com risco de obsolescência. Muito utilizado em alimentos, bebidas e medicamentos.',
+            'FEFO': 'First Expired, First Out — Primeiro que vence, primeiro que sai. Prioriza a data de validade, independentemente da data de entrada. Padrão para hospitais, farmácias, supermercados e foodservice.',
+            'LIFO': 'Last In, First Out — Último que entra, primeiro que sai. Pouco utilizado operacionalmente. Em muitos países não é aceito para fins contábeis (inclusive pelas normas IFRS).',
+            'HIFO': 'Highest In, First Out — Sai primeiro o item de maior custo. Utilizado apenas em situações específicas de controle financeiro ou tributário.',
+            'LOFO': 'Lowest In, First Out — Sai primeiro o item de menor custo. Raro na prática.',
+            'Transferência Entre Lojas': 'Movimentação de produtos entre unidades da mesma rede para equilibrar níveis de estoque e atender à demanda local sem necessidade de nova compra.',
+            'Curva ABC': 'Classificação dos itens conforme importância financeira. Classe A: poucos itens de grande valor. Classe B: importância intermediária. Classe C: muitos itens de baixo valor. Ajuda a definir frequência de inventário e nível de controle.',
+          } },
           { id: 'divergencia', label: 'Divergência recorrente de estoque?', type: 'radio', opts: ['Sim','Não','Às vezes'] },
           { id: 'compra_central', label: 'Modelo de Compras', type: 'radio', opts: ['Centralizada','Por unidade','Mista'] },
           { id: 'alcada_compras', label: 'Existe limite de valor para compradores? Quem aprova o Pedido de Compra?', type: 'textarea', ph: 'Descreva as alçadas ou Não possui' },
@@ -223,6 +236,7 @@ export const DEFS: Record<string, ChecklistDef> = {
         id: 'producao_industrial', title: 'Produção Industrial (se aplicável)',
         desc: 'Para clientes com fábrica, cozinha central ou produção estruturada',
         fields: [
+          { id: 'utiliza_producao_industrial', label: 'Utiliza produção industrial?', type: 'radio_master', opts: ['Sim','Não'], affects: ['prod_modelo','prod_integracao_fabrica','prod_mao_obra','prod_importacao_ft','prod_maquinas','prod_desperdicio','prod_lote_tipo','prod_validade','prod_logistica'] },
           { id: 'prod_modelo', label: 'Produção é por pedidos das unidades (SC) ou por planejamento (MRP)?', type: 'radio', opts: ['Por pedidos de unidades (SC)','Por planejamento (MRP)','Misto','Não se aplica'] },
           { id: 'prod_integracao_fabrica', label: 'Realiza integração entre lojas e fábricas? Como chegam as solicitações?', type: 'textarea', ph: 'Descreva o fluxo de abastecimento ou Não se aplica' },
           { id: 'prod_base_calculo', label: 'Base de cálculo do plano de produção', type: 'chips', opts: ['Histórico de vendas','Sazonalidade','Estoque mín/máx','Meta de venda','A definir'] },
@@ -244,7 +258,7 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'bi_atual', label: 'BI / Relatórios', type: 'text', ph: 'Nome ou Nenhum' },
           { id: 'rh_atual', label: 'RH / Folha', type: 'text', ph: 'Nome ou Nenhum' },
           { id: 'funciona', label: 'O que funciona bem no sistema atual? (não pode perder)', type: 'textarea', ph: 'Descreva...' },
-          { id: 'planilhas', label: 'Existem planilhas paralelas ao sistema?', type: 'radio', opts: ['Sim, muitas','Algumas','Não'] },
+          { id: 'planilhas', label: 'Existem planilhas paralelas ao sistema?', type: 'radio_conditional', opts: ['Não','Sim'], conditionalOpt: 'Sim', conditionalField: { id: 'planilhas_upload', label: 'Enviar planilhas para o Google Drive', type: 'drive_upload' } },
           { id: 'relatorios_atuais', label: '3 a 5 relatórios que o cliente usa hoje', type: 'textarea', ph: 'Ex: 1. Vendas por produto, 2. CMV mensal...' },
           { id: 'reuniao_gestao', label: 'Qual dia do mês o cliente reunirá para analisar relatórios?', type: 'text', ph: 'Ex: Todo dia 5 / Não tem rotina definida' },
           { id: 'kpis', label: 'KPIs Acompanhados', type: 'chips', opts: ['CMV','Margem','Ticket Médio','Venda/hora','Performance Delivery','Ruptura','Desperdício','EBITDA','NPS','Produtividade'] },
@@ -423,7 +437,7 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'eng_produto', label: 'Utiliza engenharia de produto?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'ctrl_perdas', label: 'Controle de perdas/refugo?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'ctrl_manutencao', label: 'Controle de manutenção?', type: 'radio', opts: ['Sim','Não'] },
-          { id: 'bom', label: 'Possui estrutura/BOM?', type: 'radio', opts: ['Sim','Parcialmente','Não'] },
+          { id: 'bom', label: 'Possui ficha técnica e processo de fabricação documentados?', type: 'radio', opts: ['Sim','Parcialmente','Não'] },
           { id: 'ctrl_revisao', label: 'Controle de revisão?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'ctrl_versoes', label: 'Controle de versões?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'ficha_tec', label: 'Possui ficha técnica?', type: 'radio', opts: ['Sim','Não'] },
@@ -439,7 +453,15 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'inv_rotativo', label: 'Inventário rotativo ou geral?', type: 'radio', opts: ['Rotativo','Geral','Ambos'] },
           { id: 'freq_inventario', label: 'Frequência de inventário', type: 'select', opts: ['Selecione','Diário','Semanal','Quinzenal','Mensal','Trimestral','Anual'] },
           { id: 'ctrl_endereco', label: 'Controle por endereço?', type: 'radio', opts: ['Sim','Não'] },
-          { id: 'fefo_fifo', label: 'Controle FEFO/FIFO?', type: 'radio', opts: ['Sim','Não'] },
+          { id: 'fefo_fifo', label: 'Faz controle de estoque?', type: 'chips_conditional', opts: ['FIFO','FEFO','LIFO','HIFO','LOFO','Transferência Entre Lojas','Curva ABC','Outros'], conditionalOpt: 'Outros', conditionalField: { id: 'fefo_fifo_outros', label: 'Descreva o outro método utilizado', type: 'text', ph: 'Descreva o método...' }, tooltips: {
+            'FIFO': 'First In, First Out — Primeiro que entra, primeiro que sai. Ideal para produtos perecíveis ou com risco de obsolescência. Muito utilizado em alimentos, bebidas e medicamentos.',
+            'FEFO': 'First Expired, First Out — Primeiro que vence, primeiro que sai. Prioriza a data de validade, independentemente da data de entrada. Padrão para hospitais, farmácias, supermercados e foodservice.',
+            'LIFO': 'Last In, First Out — Último que entra, primeiro que sai. Pouco utilizado operacionalmente. Em muitos países não é aceito para fins contábeis (inclusive pelas normas IFRS).',
+            'HIFO': 'Highest In, First Out — Sai primeiro o item de maior custo. Utilizado apenas em situações específicas de controle financeiro ou tributário.',
+            'LOFO': 'Lowest In, First Out — Sai primeiro o item de menor custo. Raro na prática.',
+            'Transferência Entre Lojas': 'Movimentação de produtos entre unidades da mesma rede para equilibrar níveis de estoque e atender à demanda local sem necessidade de nova compra.',
+            'Curva ABC': 'Classificação dos itens conforme importância financeira. Classe A: poucos itens de grande valor. Classe B: importância intermediária. Classe C: muitos itens de baixo valor. Ajuda a definir frequência de inventário e nível de controle.',
+          } },
           { id: 'ctrl_validade', label: 'Controle de validade?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'ctrl_lote_est', label: 'Controle de lote (estoque)?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'wms', label: 'Possui WMS?', type: 'radio', opts: ['Sim','Não','Em implantação'] },
@@ -509,6 +531,7 @@ export const DEFS: Record<string, ChecklistDef> = {
         id: 'facilities', title: 'Facilities (quando aplicável)',
         desc: 'Gestão de contratos, postos, equipes e SLA — preencha se o cliente opera em facilities',
         fields: [
+          { id: 'utiliza_facilities', label: 'Utiliza Facilities?', type: 'radio_master', opts: ['Sim','Não'], affects: ['gestao_sla','ctrl_equipes','ctrl_escalas','ctrl_materiais_contrato','ctrl_produtividade','medicao_contratos','fat_posto','ctrl_ponto','escalas_rh','terceirizados','integracao_folha','gestao_epi','mesa_operacao'] },
           { id: 'qtd_contratos', label: 'Quantidade de contratos/postos', type: 'number', ph: '0' },
           { id: 'gestao_sla', label: 'Gestão de SLA?', type: 'radio', opts: ['Sim','Não','Não se aplica'] },
           { id: 'ctrl_equipes', label: 'Controle de equipes?', type: 'radio', opts: ['Sim','Não','Não se aplica'] },
@@ -522,7 +545,7 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'terceirizados', label: 'Terceirizados?', type: 'radio', opts: ['Sim','Não','Não se aplica'] },
           { id: 'integracao_folha', label: 'Integração com folha de pagamento?', type: 'radio', opts: ['Sim','Não','Não se aplica'] },
           { id: 'gestao_epi', label: 'Gestão de EPIs?', type: 'radio', opts: ['Sim','Não','Não se aplica'] },
-          { id: 'mesa_operacao', label: 'Cliente usa mesa de operação?', type: 'radio', opts: ['Sim','Não'] },
+          { id: 'mesa_operacao', label: 'Cliente usa mesa de operação?', type: 'radio', opts: ['Sim','Não','Não se aplica'] },
         ],
       },
       // ── 10 SISTEMAS E INTEGRAÇÕES ──────────────────────────
@@ -600,7 +623,6 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'resp_custos', label: 'Responsável por validar custos', type: 'text', ph: 'Nome e cargo' },
           { id: 'resp_treinamentos', label: 'Responsável pelos treinamentos', type: 'text', ph: 'Nome e cargo' },
           { id: 'resp_aprovacao', label: 'Responsável por aprovar entregas / assinar documentos', type: 'text', ph: 'Nome e cargo' },
-          { id: 'sponsor', label: 'Sponsor Executivo', type: 'text', ph: 'Nome e cargo' },
           { id: 'freq_status', label: 'Frequência disponível para status report', type: 'radio', opts: ['Semanal','Quinzenal','Mensal','A definir'] },
           { id: 'aprova_financeiro', label: 'Quem aprova financeiramente?', type: 'text', ph: 'Nome e cargo' },
           { id: 'go_live', label: 'Expectativa de entrada em produção', type: 'text', ph: 'Ex: Q3 2025' },
@@ -613,7 +635,7 @@ export const DEFS: Record<string, ChecklistDef> = {
         id: 'levantamento', title: 'Levantamento Comercial',
         desc: '⚠ O comercial deve sinalizar claramente os riscos identificados na venda',
         fields: [
-          { id: 'alertas', label: 'Alertas identificados (marque todos que se aplicam)', type: 'chips', opts: ['Cliente com operação complexa','Cliente sem processos definidos','Infraestrutura ruim','Alta expectativa vs. realidade','Dependência de terceiros','Dependência de customizações','Processos muito manuais','Resistência à mudança','Alta criticidade operacional','Dependência de sistema legado','Baixa maturidade gerencial'] },
+          { id: 'alertas', label: 'Alertas identificados (marque todos que se aplicam)', type: 'chips', opts: ['Cliente com operação complexa','Cliente sem processos definidos','Infraestrutura ruim','Alta expectativa vs. realidade','Dependência de terceiros','Dependência de customizações','Processos muito manuais','Resistência à mudança','Alta criticidade operacional','Dependência de sistema legado','Baixa maturidade gerencial','Nenhum alerta'] },
           { id: 'alertas_desc', label: 'Descrição dos alertas identificados', type: 'textarea', ph: 'Para cada alerta marcado acima, descreva: terceiros envolvidos e serviços prestados, dependências identificadas, contexto da operação e qualquer observação importante que a equipe de implantação precisa saber...' },
         ],
       },
@@ -622,7 +644,7 @@ export const DEFS: Record<string, ChecklistDef> = {
         id: 'escopo', title: 'Escopo Vendido',
         desc: 'O que foi efetivamente contratado e o que está fora do escopo',
         fields: [
-          { id: 'modulos_vendidos', label: 'Quais módulos foram vendidos?', type: 'chips', opts: ['Produção','Planejamento industrial','Estoque','Rastreabilidade','Compras','Fiscal','BI','Financeiro','RH','WMS','CRM','Facilities','Manutenção','IA'] },
+          { id: 'modulos_vendidos', label: 'Quais módulos foram vendidos?', type: 'chips', opts: ['Produção','Planejamento industrial','Estoque','Rastreabilidade','Compras','Fiscal','BI','Financeiro','RH','Operador Logístico','CRM','Facilities','Manutenção','IA'] },
           { id: 'integracoes_contratadas', label: 'Quais integrações estão contratadas?', type: 'textarea', ph: 'Liste as integrações previstas em contrato...' },
           { id: 'customizacao', label: 'Existe customização contratada?', type: 'radio_conditional', opts: ['Não','Sim'], conditionalOpt: 'Sim', conditionalField: { id: 'customizacao_desc', label: 'Descreva a customização', type: 'textarea', ph: 'Descreva o que foi customizado...' } },
           { id: 'dev_especifico', label: 'Existe desenvolvimento específico?', type: 'radio_conditional', opts: ['Não','Sim'], conditionalOpt: 'Sim', conditionalField: { id: 'dev_especifico_desc', label: 'Descreva o desenvolvimento', type: 'textarea', ph: 'Descreva o desenvolvimento contratado...' } },
@@ -775,7 +797,7 @@ export const DEFS: Record<string, ChecklistDef> = {
           { id: 'marca_exigida', label: 'Possui controle de marca/produto exigido pelo cliente?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'restricoes_nutricionais', label: 'Existem restrições nutricionais específicas?', type: 'radio', opts: ['Sim','Não'] },
           { id: 'exigencias_sanitarias', label: 'Existem exigências sanitárias específicas?', type: 'radio', opts: ['Sim','Não'] },
-          { id: 'abastecimento_freq', label: 'Frequência de abastecimento por categoria', type: 'chips', opts: ['Perecíveis — diário','Secos — semanal','Congelados — quinzenal','Hortifruti — diário','Outro'] },
+          { id: 'abastecimento_freq', label: 'Frequência de abastecimento por categoria', type: 'category_periodicity', categories: ['Proteínas','Congelados','Hortifrúti','Outros perecíveis','Estocáveis','Secos','Panificação','Descartáveis','Produtos de limpeza'], periodicities: ['Diário','Semanal','Quinzenal','Mensal','Periódico'] },
         ],
       },
       // ── 05 PRODUTOS, RECEITUÁRIO E PRODUÇÃO ────────────────
