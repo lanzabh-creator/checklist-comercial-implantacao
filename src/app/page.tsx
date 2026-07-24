@@ -73,6 +73,7 @@ export default function Home() {
   const [tooltipText, setTooltipText] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [uploadedDocs, setUploadedDocs] = useState<{ fileId: string; fileName: string; folder: string }[]>([])
   const [gDriveToken, setGDriveToken] = useState<string | null>(null)
 
   // ── Google Drive OAuth + Upload ───────────────────────────
@@ -142,6 +143,7 @@ export default function Home() {
     setField(fieldId + '_uploading', 'true')
     const prev: string[] = Array.from((fd[fieldId + '_files'] as string[] | undefined) || [])
     const newUploaded: string[] = []
+    const newDocs: { fileId: string; fileName: string; folder: string }[] = []
     try {
       const folderId = await getOrCreateDriveFolder(gDriveToken, sectionName)
       for (const file of Array.from(files)) {
@@ -149,13 +151,17 @@ export default function Home() {
         const form = new FormData()
         form.append('metadata', new Blob([meta], { type: 'application/json' }))
         form.append('file', file)
-        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name', {
           method: 'POST',
           headers: { Authorization: `Bearer ${gDriveToken}` },
           body: form,
         })
         if (res.ok) {
+          const uploaded = await res.json().catch(() => ({}))
           newUploaded.push(file.name)
+          if (uploaded?.id) {
+            newDocs.push({ fileId: uploaded.id, fileName: file.name, folder: sectionName || 'Documentos' })
+          }
         } else {
           const err = await res.json().catch(() => ({}))
           if (res.status === 401) {
@@ -173,6 +179,9 @@ export default function Home() {
         [fieldId + '_files']: [...prev, ...newUploaded],
         [fieldId + '_uploading']: 'false',
       }))
+      if (newDocs.length > 0) {
+        setUploadedDocs(prevDocs => [...prevDocs, ...newDocs])
+      }
       if (newUploaded.length > 0) {
         alert(`✅ ${newUploaded.length} arquivo(s) enviado(s) com sucesso para o Google Drive!`)
       }
@@ -213,6 +222,8 @@ export default function Home() {
       `Classificação de risco: ${String(fd['risco'] || 'Não informado')}`,
       ``,
       `O anexo contém os dados preenchidos e a análise de riscos e pontos de atenção para a equipe de implantação.`,
+      ``,
+      `⚠️ Baixe o anexo antes de abri-lo para garantir que o botão de impressão funcione corretamente (a pré-visualização direta de anexos costuma bloquear scripts por segurança).`,
       ``,
       `Este e-mail foi enviado automaticamente pelo sistema Teknisa Intelligence Comercial.`,
     ]
@@ -1036,10 +1047,27 @@ strong{color:#1a1a2e;font-weight:700;}
       zip.file(`Relatorio_Checklist_${safeClientName}.html`, fullHtml)
 
       if (gDriveToken) {
-        const docs = await listAndDownloadClientDocs(gDriveToken)
-        docs.forEach(d => {
-          zip.folder(d.folder)?.file(d.name, d.blob)
-        })
+        let docsAdded = 0
+        // Fonte primária: arquivos rastreados no momento do upload (por ID — sempre confiável)
+        if (uploadedDocs.length > 0) {
+          for (const doc of uploadedDocs) {
+            try {
+              const dl = await fetch(`https://www.googleapis.com/drive/v3/files/${doc.fileId}?alt=media`, { headers: { Authorization: `Bearer ${gDriveToken}` } })
+              if (dl.ok) {
+                const blob = await dl.blob()
+                zip.folder(doc.folder)?.file(doc.fileName, blob)
+                docsAdded++
+              }
+            } catch { /* ignora arquivo individual com falha */ }
+          }
+        }
+        // Fallback: busca por nome de pasta (cobre uploads de sessões anteriores)
+        if (docsAdded === 0) {
+          const docs = await listAndDownloadClientDocs(gDriveToken)
+          docs.forEach(d => {
+            zip.folder(d.folder)?.file(d.name, d.blob)
+          })
+        }
       }
 
       const zipBlob = await zip.generateAsync({ type: 'blob' })
@@ -1607,7 +1635,7 @@ select option{background:#fff;color:var(--text);}
           <div className="hdr-client">Cliente: <strong>{clientName}</strong></div>
           <div className="status-pill"><span className="sdot" />Sistema Ativo</div>
           <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:9, fontWeight:700, color:'rgba(244,184,0,.7)', background:'rgba(244,184,0,.08)', border:'1px solid rgba(244,184,0,.2)', borderRadius:20, padding:'3px 9px', letterSpacing:'0.5px', whiteSpace:'nowrap' }}>
-            v0.13.3-beta
+            v0.13.4-beta
           </div>
         </div>
       </header>
