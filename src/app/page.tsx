@@ -1142,7 +1142,7 @@ body{font-family:'Roboto',sans-serif;font-size:14px;color:var(--text);background
 .layout{position:fixed;top:54px;left:0;right:0;bottom:0;display:flex;flex-direction:row;}
 
 /* ── SIDEBAR (mantém escura, colapsável) ── */
-.sidebar{width:var(--sb-w);flex-shrink:0;background:var(--tk-deep);border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;overflow:hidden;height:100%;transition:width .22s cubic-bezier(.4,0,.2,1);}
+.sidebar{width:var(--sb-w);flex-shrink:0;background:var(--tk-deep);border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;overflow:hidden;height:100%;min-height:0;transition:width .22s cubic-bezier(.4,0,.2,1);}
 .sidebar.collapsed{width:var(--sb-w-col);}
 .sb-toggle{display:flex;align-items:center;justify-content:flex-end;padding:10px 10px 0;flex-shrink:0;}
 .sb-toggle-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;color:rgba(255,255,255,.5);font-size:14px;width:30px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
@@ -1167,7 +1167,7 @@ body{font-family:'Roboto',sans-serif;font-size:14px;color:var(--text);background
 .prog-lbl{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.3);margin-bottom:6px;display:flex;justify-content:space-between;}
 .prog-bar{height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
 .prog-fill{height:100%;background:linear-gradient(90deg,var(--tk-yellow),var(--tk-green));border-radius:2px;transition:width .35s;}
-.sec-nav{display:flex;flex-direction:column;gap:1px;padding:0 6px 12px;overflow:hidden;flex:1;overflow-y:auto;}
+.sec-nav{display:flex;flex-direction:column;gap:1px;padding:0 6px 12px;overflow-y:auto;flex:1;min-height:0;}
 .nav-it{padding:6px 8px;border-radius:var(--radius);cursor:pointer;color:rgba(255,255,255,.45);font-size:11px;transition:all .14s;display:flex;align-items:center;gap:6px;user-select:none;white-space:nowrap;min-width:0;}
 .nav-it:hover{background:rgba(255,255,255,.07);color:#fff;}
 .nav-it.active{background:rgba(4,4,134,.6);color:#fff;border-left:2px solid var(--tk-yellow);}
@@ -1387,14 +1387,9 @@ select option{background:#fff;color:var(--text);}
 
       {/* TOPBAR */}
       <header className="topbar">
-        <div style={{ display:'flex',alignItems:'center',gap:10 }}>
+        <div style={{ display:'flex',alignItems:'center',gap:10, minWidth:0 }}>
+          <button className="mob-menu-btn" onClick={() => setSidebarOpen(o => !o)} aria-label="Menu">☰</button>
           <div className="tk-wordmark">TEKNISA</div>
-          <div className="tk-dots">
-            <span className="tk-dot" style={{ background:'#fff' }} />
-            <span className="tk-dot" style={{ background:'#059E1E' }} />
-            <span className="tk-dot" style={{ background:'#fff' }} />
-            <span className="tk-dot" style={{ background:'#F4B800' }} />
-          </div>
           <span className="tk-sub">Intelligence Comercial</span>
         </div>
         <div className="tab-ctr">
@@ -1422,7 +1417,6 @@ select option{background:#fff;color:var(--text);}
           <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:9, fontWeight:700, color:'rgba(244,184,0,.7)', background:'rgba(244,184,0,.08)', border:'1px solid rgba(244,184,0,.2)', borderRadius:20, padding:'3px 9px', letterSpacing:'0.5px', whiteSpace:'nowrap' }}>
             v0.12.0-beta
           </div>
-          <button className="mob-menu-btn" onClick={() => setSidebarOpen(o => !o)} aria-label="Menu">☰</button>
         </div>
       </header>
 
