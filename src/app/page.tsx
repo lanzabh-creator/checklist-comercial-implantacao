@@ -187,6 +187,7 @@ export default function Home() {
   // Scroll to top when section changes
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [sec])
 
   const def = cl ? DEFS[cl] : null
@@ -273,6 +274,82 @@ export default function Home() {
     }
     localStorage.removeItem('tk_fd')
     localStorage.setItem('tk_sec', '0')
+  }
+
+  // ── Validação obrigatória — página 1 (Pesquisa & Identificação) ──
+  const REQUIRED_P1_FIELDS: { id: string; label: string }[] = [
+    { id: 'consultor_nome', label: 'Analista Comercial' },
+    { id: 'consultor_email', label: 'Email Analista Comercial' },
+    { id: 'sponsor_nome', label: 'Sponsor Executivo — Nome' },
+    { id: 'sponsor_email', label: 'Sponsor Executivo — E-mail' },
+    { id: 'sponsor_tel', label: 'Sponsor Executivo — Telefone' },
+    { id: 'coord_nome', label: 'Coordenador do Projeto — Nome' },
+    { id: 'coord_email', label: 'Coordenador do Projeto — E-mail' },
+    { id: 'coord_tel', label: 'Coordenador do Projeto — Telefone' },
+    { id: 'razao_social', label: 'Razão Social' },
+    { id: 'nome_fantasia', label: 'Nome Fantasia' },
+    { id: 'cnpj', label: 'CNPJ Principal' },
+  ]
+
+  const handleNext = () => {
+    if (currentSec?.id === 'pesquisa') {
+      const missing = REQUIRED_P1_FIELDS.filter(f => !String(fd[f.id] || '').trim())
+      if (missing.length > 0) {
+        alert(`⚠️ Preencha os campos obrigatórios antes de avançar:\n\n${missing.map(f => `• ${f.label}`).join('\n')}`)
+        return
+      }
+    }
+    setSec(s => s + 1)
+  }
+
+  // ── Salvar / Carregar Rascunho ────────────────────────────
+  const loadDraftInputRef = useRef<HTMLInputElement>(null)
+
+  const saveDraft = () => {
+    if (!cl) { alert('Selecione um checklist antes de salvar o rascunho.'); return }
+    const cliente = String(fd['razao_social'] || 'Cliente').replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').trim().replace(/\s+/g, '_')
+    const analista = String(fd['consultor_nome'] || 'Analista').replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').trim().replace(/\s+/g, '_')
+    const now = new Date()
+    const dataHora = now.toLocaleDateString('pt-BR').replace(/\//g, '-') + '_' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
+    const filename = `${cliente}_${analista}_${dataHora}.json`
+
+    const draft = {
+      _teknisaDraft: true,
+      version: 1,
+      checklist: cl,
+      section: sec,
+      formData: fd,
+      savedAt: now.toISOString(),
+    }
+    const blob = new Blob([JSON.stringify(draft, null, 2)], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  const loadDraft = (file: File | undefined) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = e => {
+      try {
+        const draft = JSON.parse(String(e.target?.result))
+        if (!draft?._teknisaDraft || !draft.checklist || !draft.formData) {
+          alert('⚠️ Arquivo inválido. Selecione um rascunho salvo pelo sistema Teknisa.')
+          return
+        }
+        setCl(draft.checklist)
+        setFd(draft.formData)
+        setSec(draft.section || 0)
+        setSefazResult(null)
+        setSefazCnpj('')
+        alert(`✅ Rascunho carregado com sucesso!\n\nChecklist: ${DEFS[draft.checklist]?.label || draft.checklist}\nSalvo em: ${new Date(draft.savedAt).toLocaleString('pt-BR')}`)
+      } catch {
+        alert('⚠️ Não foi possível ler o arquivo. Verifique se é um rascunho válido (.json).')
+      }
+    }
+    reader.readAsText(file)
   }
 
   // ── AI calls ──────────────────────────────────────────────
@@ -906,9 +983,9 @@ strong{color:#1a1a2e;font-weight:700;}
             )}
           </div>
           {!gDriveToken && (
-            <div style={{ marginTop:6, fontSize:10, color:'rgba(255,255,255,.4)', fontFamily:"'Roboto',sans-serif", display:'flex', alignItems:'center', gap:6 }}>
+            <div style={{ marginTop:6, fontSize:10, color:'#8B90A0', fontFamily:"'Roboto',sans-serif", display:'flex', alignItems:'center', gap:6 }}>
               ⚠ Faça login com o Google para enviar arquivos ao Drive
-              <button onClick={signInGoogle} style={{ background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.2)', borderRadius:5, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:600, padding:'3px 10px', cursor:'pointer' }}>
+              <button onClick={signInGoogle} style={{ background:'#040486', border:'1px solid #040486', borderRadius:5, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:600, padding:'4px 10px', cursor:'pointer' }}>
                 🔐 Login Google
               </button>
             </div>
@@ -944,7 +1021,7 @@ strong{color:#1a1a2e;font-weight:700;}
                     📎 Selecionar PDF
                     <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { const file = e.target.files?.[0]; if (file) { setField(cf.id + '_name', file.name); const r = new FileReader(); r.onload = ev => setField(cf.id, String(ev.target?.result)); r.readAsDataURL(file) } }} />
                   </label>
-                  <span style={{ fontSize: 11, color: fd[cf.id + '_name'] ? 'var(--tk-green)' : 'rgba(255,255,255,.3)' }}>{fd[cf.id + '_name'] ? `✅ ${fd[cf.id + '_name']}` : 'Nenhum arquivo selecionado'}</span>
+                  <span style={{ fontSize: 11, color: fd[cf.id + '_name'] ? 'var(--tk-green)' : '#8B90A0' }}>{fd[cf.id + '_name'] ? `✅ ${fd[cf.id + '_name']}` : 'Nenhum arquivo selecionado'}</span>
                 </div>
               ) : cf.type === 'drive_upload' ? (
                 <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -962,7 +1039,7 @@ strong{color:#1a1a2e;font-weight:700;}
                         disabled={fd[cf.id + '_uploading'] === 'true'} />
                     </label>
                     {!gDriveToken && (
-                      <button onClick={signInGoogle} style={{ background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.2)', borderRadius:5, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:600, padding:'5px 10px', cursor:'pointer' }}>
+                      <button onClick={signInGoogle} style={{ background:'#040486', border:'1px solid #040486', borderRadius:5, color:'#fff', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:600, padding:'6px 10px', cursor:'pointer' }}>
                         🔐 Login Google
                       </button>
                     )}
@@ -975,7 +1052,7 @@ strong{color:#1a1a2e;font-weight:700;}
                     </div>
                   )}
                   {!gDriveToken && (
-                    <div style={{ fontSize:10, color:'rgba(255,255,255,.4)', fontFamily:"'Roboto',sans-serif" }}>
+                    <div style={{ fontSize:10, color:'#8B90A0', fontFamily:"'Roboto',sans-serif" }}>
                       ⚠ Faça login com o Google para enviar arquivos ao Drive
                     </div>
                   )}
@@ -995,7 +1072,7 @@ strong{color:#1a1a2e;font-weight:700;}
       const REGIMES = ['Simples Nacional','Lucro Presumido','Lucro Real','Misto']
       return (
         <div key={f.id} className="fgrp s2">
-          <label className="lbl">{f.label} {qtd > 1 ? <span style={{ color: 'var(--tk-yellow)', fontSize: 9, fontWeight: 500 }}>({qtd} CNPJs — selecione todos os regimes aplicáveis)</span> : <span style={{ color: 'rgba(255,255,255,.25)', fontSize: 9 }}>(selecione o regime)</span>}</label>
+          <label className="lbl">{f.label} {qtd > 1 ? <span style={{ color: 'var(--tk-yellow)', fontSize: 9, fontWeight: 500 }}>({qtd} CNPJs — selecione todos os regimes aplicáveis)</span> : <span style={{ color: '#8B90A0', fontSize: 9 }}>(selecione o regime)</span>}</label>
           <div className="chips-grp">
             {REGIMES.map(o => <span key={o} className={`chip${vArr.includes(o) ? ' on' : ''}`} onClick={() => toggleChip(f.id, o)}>{o}</span>)}
           </div>
@@ -1021,7 +1098,7 @@ strong{color:#1a1a2e;font-weight:700;}
               >{r === 'Baixo' ? '🟢' : r === 'Médio' ? '🟡' : '🔴'} {r}</div>
             ))}
           </div>
-          {tooltipText && <div style={{ marginTop: 9, padding: '9px 13px', background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 8, fontSize: 11, color: 'rgba(255,255,255,.72)', lineHeight: 1.6, fontFamily: 'Roboto,sans-serif' }}>{tooltipText}</div>}
+          {tooltipText && <div style={{ marginTop: 9, padding: '9px 13px', background: '#F2F4F8', border: '1px solid #DDE1EA', borderRadius: 8, fontSize: 11, color: '#1A1D2E', lineHeight: 1.6, fontFamily: 'Roboto,sans-serif' }}>{tooltipText}</div>}
         </div>
       )
     }
@@ -1195,11 +1272,11 @@ select option{background:#fff;color:var(--text);}
 .mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:150;top:54px;cursor:pointer;}
 
 /* ── REPORT PAGE ── */
-.report-layout{position:fixed;top:54px;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:var(--bg);}
+.report-layout{position:fixed;top:54px;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:var(--tk-deep);}
 .rpt-loader{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:14px;}
-.loader-ring{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--tk-primary);border-radius:50%;animation:spin .75s linear infinite;}
+.loader-ring{width:32px;height:32px;border:2px solid rgba(255,255,255,.15);border-top-color:var(--tk-yellow);border-radius:50%;animation:spin .75s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.loader-msg{font-size:11px;color:var(--text-muted);text-align:center;line-height:1.8;}
+.loader-msg{font-size:11px;color:rgba(255,255,255,.5);text-align:center;line-height:1.8;}
 .rpt-bar{flex-shrink:0;background:var(--tk-deep);border-bottom:1px solid rgba(255,255,255,.08);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
 .rpt-client-name{font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;color:#fff;}
 .rpt-meta{font-size:9px;color:rgba(255,255,255,.35);}
@@ -1239,13 +1316,16 @@ select option{background:#fff;color:var(--text);}
 .rs-body em{color:var(--tk-yellow);font-style:normal;font-weight:600;}
 .rp-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;text-align:center;padding:24px;}
 .rp-empty .big-ic{font-size:46px;opacity:.25;}
-.rp-empty p{color:var(--text-soft);font-size:13px;max-width:280px;line-height:1.7;}
-.rp-empty .hint{font-size:10px;color:var(--text-muted);background:var(--surface);border:1.5px solid var(--border);padding:7px 14px;border-radius:var(--radius);}
+.rp-empty p{color:rgba(255,255,255,.55);font-size:13px;max-width:280px;line-height:1.7;}
+.rp-empty .hint{font-size:10px;color:rgba(255,255,255,.4);background:rgba(255,255,255,.06);border:1.5px solid rgba(255,255,255,.15);padding:7px 14px;border-radius:var(--radius);}
 .sefaz-result-row{display:flex;gap:9px;padding:5px 0;border-bottom:1px solid var(--border);align-items:baseline;flex-wrap:wrap;}
 .sefaz-result-key{min-width:130px;flex-shrink:0;font-size:9px;font-family:'Poppins',sans-serif;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.7px;}
 .sefaz-result-val{color:var(--text);font-size:11px;line-height:1.5;flex:1;}
 
 /* ══ MOBILE ≤768px ══ */
+@media(max-width:900px){
+  .draft-btn-label{display:none;}
+}
 @media(max-width:768px){
   body{overflow:auto;}
   .topbar{padding:0 10px;height:50px;}
@@ -1324,11 +1404,23 @@ select option{background:#fff;color:var(--text);}
             📊 Relatório
           </button>
         </div>
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <button onClick={saveDraft} title="Salvar Rascunho"
+            style={{ background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.18)', borderRadius:7, color:'rgba(255,255,255,.75)', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:600, padding:'6px 10px', cursor:'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+            💾 <span className="draft-btn-label">Salvar Rascunho</span>
+          </button>
+          <button onClick={() => loadDraftInputRef.current?.click()} title="Carregar Rascunho"
+            style={{ background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.18)', borderRadius:7, color:'rgba(255,255,255,.75)', fontFamily:"'Poppins',sans-serif", fontSize:10, fontWeight:600, padding:'6px 10px', cursor:'pointer', display:'flex', alignItems:'center', gap:5, whiteSpace:'nowrap' }}>
+            📂 <span className="draft-btn-label">Carregar Rascunho</span>
+          </button>
+          <input ref={loadDraftInputRef} type="file" accept=".json" style={{ display:'none' }}
+            onChange={e => { loadDraft(e.target.files?.[0]); e.target.value = '' }} />
+        </div>
         <div style={{ display:'flex',alignItems:'center',gap:8 }}>
           <div className="hdr-client">Cliente: <strong>{clientName}</strong></div>
           <div className="status-pill"><span className="sdot" />Sistema Ativo</div>
           <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:9, fontWeight:700, color:'rgba(244,184,0,.7)', background:'rgba(244,184,0,.08)', border:'1px solid rgba(244,184,0,.2)', borderRadius:20, padding:'3px 9px', letterSpacing:'0.5px', whiteSpace:'nowrap' }}>
-            v0.11.1-beta
+            v0.12.0-beta
           </div>
           <button className="mob-menu-btn" onClick={() => setSidebarOpen(o => !o)} aria-label="Menu">☰</button>
         </div>
@@ -1486,7 +1578,7 @@ select option{background:#fff;color:var(--text);}
                     <div style={{ display:'flex',gap:9,alignItems:'center',width:'100%',flexWrap:'wrap' }}>
                       <input type="text" value={sefazCnpj} maxLength={18} placeholder="00.000.000/0001-00"
                         onChange={e => setSefazCnpj(maskCnpj(e.target.value))}
-                        style={{ flex:1,minWidth:190,maxWidth:260,background:'rgba(255,255,255,.08)',border:'1px solid rgba(244,184,0,.4)',borderRadius:8,color:'#fff',fontFamily:'Roboto,sans-serif',fontSize:12,padding:'7px 10px',outline:'none' }}
+                        style={{ flex:1,minWidth:190,maxWidth:260,background:'#fff',border:'1.5px solid #F4B800',borderRadius:8,color:'#1A1D2E',fontFamily:'Roboto,sans-serif',fontSize:12,padding:'7px 10px',outline:'none' }}
                       />
                       <button className="res-btn yellow" disabled={sefazLoading} onClick={doSefaz}>{sefazLoading ? '⏳ Consultando...' : '🏛️ Consultar CNPJ'}</button>
                       {sefazResult && <span style={{ fontSize:10,color:'var(--tk-green)',fontFamily:'Roboto,sans-serif' }}>✅ Dados encontrados</span>}
@@ -1497,7 +1589,7 @@ select option{background:#fff;color:var(--text);}
                         {Object.entries(SEFAZ_LABELS).map(([k,label]) => (
                           <div key={k} className="sefaz-result-row">
                             <span className="sefaz-result-key">{label}</span>
-                            <span className="sefaz-result-val" style={{ color: !sefazResult[k] || sefazResult[k]==='Não encontrado' ? 'rgba(255,255,255,.25)':'#fff' }}>{sefazResult[k] || '—'}</span>
+                            <span className="sefaz-result-val" style={{ color: !sefazResult[k] || sefazResult[k]==='Não encontrado' ? '#B0B5C4':'#1A1D2E' }}>{sefazResult[k] || '—'}</span>
                           </div>
                         ))}
                       </div>
@@ -1602,7 +1694,7 @@ select option{background:#fff;color:var(--text);}
                           {checklistPdfLoading ? '⏳ Gerando...' : '📋 Gerar Relatório'}
                         </button>
                       </div>
-                    : <button className="btn btn-pri" onClick={() => setSec(s => s + 1)}>Próximo →</button>
+                    : <button className="btn btn-pri" onClick={handleNext}>Próximo →</button>
                   }
                 </div>
               </div>
