@@ -40,8 +40,8 @@ export const DEFS: Record<string, ChecklistDef> = {
         id: 'pesquisa', title: 'Pesquisa & Identificação',
         desc: 'Dados de identificação e fontes públicas. Clique em "Pesquisar Cliente" para enriquecer automaticamente.',
         fields: [
-          { id: 'consultor_nome', label: 'Consultor Responsável', type: 'text', ph: 'Nome do consultor Teknisa' },
-          { id: 'consultor_email', label: 'E-mail do Consultor Responsável', type: 'text', ph: 'consultor@teknisa.com' },
+          { id: 'consultor_nome', label: 'Analista Comercial', type: 'text', ph: 'Nome do analista comercial Teknisa' },
+          { id: 'consultor_email', label: 'Email Analista Comercial', type: 'text', ph: 'analista@teknisa.com' },
           { id: 'sponsor_nome', label: 'Sponsor Executivo — Nome', type: 'text', ph: 'Nome e cargo' },
           { id: 'sponsor_email', label: 'Sponsor Executivo — E-mail', type: 'text', ph: 'sponsor@empresa.com.br' },
           { id: 'sponsor_tel', label: 'Sponsor Executivo — Telefone', type: 'text', ph: '(11) 99999-9999' },
@@ -303,8 +303,8 @@ export const DEFS: Record<string, ChecklistDef> = {
         id: 'pesquisa', title: 'Pesquisa & Identificação',
         desc: 'Dados de identificação e fontes públicas. Clique em "Pesquisar Cliente" para enriquecer automaticamente.',
         fields: [
-          { id: 'consultor_nome', label: 'Consultor Responsável', type: 'text', ph: 'Nome do consultor Teknisa' },
-          { id: 'consultor_email', label: 'E-mail do Consultor Responsável', type: 'text', ph: 'consultor@teknisa.com' },
+          { id: 'consultor_nome', label: 'Analista Comercial', type: 'text', ph: 'Nome do analista comercial Teknisa' },
+          { id: 'consultor_email', label: 'Email Analista Comercial', type: 'text', ph: 'analista@teknisa.com' },
           { id: 'sponsor_nome', label: 'Sponsor Executivo — Nome', type: 'text', ph: 'Nome e cargo' },
           { id: 'sponsor_email', label: 'Sponsor Executivo — E-mail', type: 'text', ph: 'sponsor@empresa.com.br' },
           { id: 'sponsor_tel', label: 'Sponsor Executivo — Telefone', type: 'text', ph: '(11) 99999-9999' },
@@ -681,8 +681,8 @@ export const DEFS: Record<string, ChecklistDef> = {
         id: 'pesquisa', title: 'Pesquisa & Identificação',
         desc: 'Dados de identificação e fontes públicas. Clique em "Pesquisar Cliente" para enriquecer automaticamente.',
         fields: [
-          { id: 'consultor_nome', label: 'Consultor Responsável', type: 'text', ph: 'Nome do consultor Teknisa' },
-          { id: 'consultor_email', label: 'E-mail do Consultor Responsável', type: 'text', ph: 'consultor@teknisa.com' },
+          { id: 'consultor_nome', label: 'Analista Comercial', type: 'text', ph: 'Nome do analista comercial Teknisa' },
+          { id: 'consultor_email', label: 'Email Analista Comercial', type: 'text', ph: 'analista@teknisa.com' },
           { id: 'sponsor_nome', label: 'Sponsor Executivo — Nome', type: 'text', ph: 'Nome e cargo' },
           { id: 'sponsor_email', label: 'Sponsor Executivo — E-mail', type: 'text', ph: 'sponsor@empresa.com.br' },
           { id: 'sponsor_tel', label: 'Sponsor Executivo — Telefone', type: 'text', ph: '(11) 99999-9999' },
