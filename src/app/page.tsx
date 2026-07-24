@@ -1,6 +1,7 @@
 'use client'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { DEFS, Field } from '@/lib/defs'
+import JSZip from 'jszip'
 
 // ── helpers ──────────────────────────────────────────────
 function maskCnpj(v: string) {
@@ -83,7 +84,7 @@ export default function Home() {
       client_id: GCLIENT_ID,
       redirect_uri: window.location.origin + '/gdrive-callback',
       response_type: 'token',
-      scope: 'https://www.googleapis.com/auth/drive.file',
+      scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.send',
       prompt: 'select_account',
     })
     const popup = window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`, 'gdrive_login', 'width=500,height=600')
@@ -181,6 +182,122 @@ export default function Home() {
       setField(fieldId + '_uploading', 'false')
     }
   }
+
+  // ── Enviar e-mail para o Analista (Gmail API) ─────────────
+  const [emailSending, setEmailSending] = useState(false)
+  const sendEmailToAnalyst = async () => {
+    if (!gDriveToken) {
+      alert('⚠️ Faça login com o Google antes de enviar o e-mail.')
+      signInGoogle()
+      return
+    }
+    const to = String(fd['consultor_email'] || '').trim()
+    if (!to) { alert('⚠️ Preencha o campo "Email Analista Comercial" na página 1 antes de enviar.'); return }
+    if (!def) return
+    setEmailSending(true)
+    const client = String(fd['razao_social'] || 'Cliente')
+    const subject = `Checklist ${def.label} — ${client}`
+    const bodyLines = [
+      `Olá,`,
+      ``,
+      `O checklist comercial de implantação do cliente "${client}" foi preenchido no sistema Teknisa Intelligence Comercial.`,
+      ``,
+      `Tipo de checklist: ${def.label}`,
+      `Data de preenchimento: ${new Date().toLocaleDateString('pt-BR')}`,
+      `Percentual preenchido: ${pct}%`,
+      `Classificação de risco: ${String(fd['risco'] || 'Não informado')}`,
+      ``,
+      `Acesse o sistema para visualizar o relatório completo, a análise de riscos e os documentos anexados na pasta do Google Drive do cliente.`,
+      ``,
+      `Este e-mail foi enviado automaticamente pelo sistema Teknisa Intelligence Comercial.`,
+    ]
+    const body = bodyLines.join('\r\n')
+    const emailRaw = [
+      `To: ${to}`,
+      `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      body,
+    ].join('\r\n')
+    const encoded = btoa(unescape(encodeURIComponent(emailRaw))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+
+    try {
+      const res = await fetch('https://www.googleapis.com/gmail/v1/users/me/messages/send', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${gDriveToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw: encoded }),
+      })
+      if (res.ok) {
+        alert(`✅ E-mail enviado com sucesso para ${to}`)
+      } else if (res.status === 401 || res.status === 403) {
+        setGDriveToken(null)
+        alert('⚠️ Sessão do Google expirada ou sem permissão de envio de e-mail. Faça login novamente.')
+      } else {
+        const err = await res.json().catch(() => ({}))
+        alert(`Erro ao enviar e-mail: ${err?.error?.message || res.status}`)
+      }
+    } catch {
+      alert('Erro ao enviar e-mail. Verifique sua conexão e tente novamente.')
+    }
+    setEmailSending(false)
+  }
+
+  // ── Lista e baixa documentos do Drive para montar o ZIP ───
+  const listAndDownloadClientDocs = async (token: string): Promise<{ name: string; folder: string; blob: Blob }[]> => {
+    const consultor = String(fd['consultor_nome'] || 'Analista_Nao_Identificado')
+      .replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').trim().slice(0, 50)
+    const prospect = String(fd['razao_social'] || 'Prospect')
+      .replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').trim().slice(0, 40)
+    const today = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
+    const clienteFolderName = `${prospect} — ${today}`
+
+    const findFolder = async (name: string, parentId: string): Promise<string | null> => {
+      const safe = name.replace(/'/g, "\\'")
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name='${safe}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`)}&fields=files(id,name)`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      if (!res.ok) return null
+      const data = await res.json()
+      return data.files?.[0]?.id || null
+    }
+
+    try {
+      const consultorId = await findFolder(consultor, GDRIVE_FOLDER)
+      if (!consultorId) return []
+      const clienteId = await findFolder(clienteFolderName, consultorId)
+      if (!clienteId) return []
+
+      const subRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`'${clienteId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`)}&fields=files(id,name)`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      const subData = await subRes.json()
+      const subfolders: { id: string; name: string }[] = subData.files || []
+
+      const results: { name: string; folder: string; blob: Blob }[] = []
+      for (const folder of subfolders) {
+        const filesRes = await fetch(
+          `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`'${folder.id}' in parents and trashed=false`)}&fields=files(id,name)`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        const filesData = await filesRes.json()
+        const files: { id: string; name: string }[] = filesData.files || []
+        for (const file of files) {
+          const dl = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, { headers: { Authorization: `Bearer ${token}` } })
+          if (dl.ok) {
+            const blob = await dl.blob()
+            results.push({ name: file.name, folder: folder.name, blob })
+          }
+        }
+      }
+      return results
+    } catch {
+      return []
+    }
+  }
+
   const reportRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLElement>(null)
 
@@ -768,14 +885,11 @@ Seja específico com os dados do cliente. Evite generalidades. Tom técnico e di
       fieldsHtml += `</table></div>`
     })
 
-    // ── 5. Abre janela de impressão ───────────────────────────
-    const w = window.open('', '_blank')
-    if (!w) { setChecklistPdfLoading(false); return }
-
+    // ── 5. Monta o HTML completo (reutilizado para impressão e ZIP) ──
     const risco = String(fd['risco'] || '—')
     const riscoColor = risco === 'Alto' ? '#c0392b' : risco === 'Médio' ? '#e67e22' : '#27ae60'
 
-    w.document.write(`<!DOCTYPE html>
+    const fullHtml = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -857,10 +971,40 @@ strong{color:#1a1a2e;font-weight:700;}
   </div>
 
 </div>
-<script>setTimeout(()=>window.print(),800);<\/script>
 </body>
-</html>`)
-    w.document.close()
+</html>`
+
+    // ── 6. Abre janela de impressão ───────────────────────────
+    const w = window.open('', '_blank')
+    if (w) {
+      w.document.write(fullHtml.replace('</body>', '<script>setTimeout(()=>window.print(),800);<\\/script></body>'))
+      w.document.close()
+    }
+
+    // ── 7. Monta ZIP com relatório + documentos do Google Drive ──
+    try {
+      const zip = new JSZip()
+      const safeClientName = client.replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '').trim().replace(/\s+/g, '_')
+      zip.file(`Relatorio_Checklist_${safeClientName}.html`, fullHtml)
+
+      if (gDriveToken) {
+        const docs = await listAndDownloadClientDocs(gDriveToken)
+        docs.forEach(d => {
+          zip.folder(d.folder)?.file(d.name, d.blob)
+        })
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' })
+      const zipDate = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(zipBlob)
+      a.download = `Checklist_${safeClientName}_${zipDate}.zip`
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } catch (e) {
+      console.error('Erro ao gerar ZIP:', e)
+    }
+
     setChecklistPdfLoading(false)
   }
 
@@ -1415,7 +1559,7 @@ select option{background:#fff;color:var(--text);}
           <div className="hdr-client">Cliente: <strong>{clientName}</strong></div>
           <div className="status-pill"><span className="sdot" />Sistema Ativo</div>
           <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:9, fontWeight:700, color:'rgba(244,184,0,.7)', background:'rgba(244,184,0,.08)', border:'1px solid rgba(244,184,0,.2)', borderRadius:20, padding:'3px 9px', letterSpacing:'0.5px', whiteSpace:'nowrap' }}>
-            v0.12.0-beta
+            v0.13.0-beta
           </div>
         </div>
       </header>
@@ -1680,6 +1824,14 @@ select option{background:#fff;color:var(--text);}
                   <button className="btn btn-ghost" disabled={sec === 0} onClick={() => setSec(s => s - 1)}>← Anterior</button>
                   {sec === sections.length - 1
                     ? <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
+                        <button
+                          className="btn"
+                          onClick={sendEmailToAnalyst}
+                          disabled={emailSending}
+                          style={{ background:'#fff', border:'1.5px solid var(--tk-primary)', color:'var(--tk-primary)', fontWeight:700 }}
+                        >
+                          {emailSending ? '⏳ Enviando...' : '✉️ Enviar por email p/ Analista'}
+                        </button>
                         <button
                           className="btn btn-gen"
                           onClick={exportChecklistPDF}
