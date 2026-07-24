@@ -967,7 +967,18 @@ strong{color:#1a1a2e;font-weight:700;}
 </style>
 </head>
 <body>
-<button class="print-btn" onclick="window.print()">🖨️ Imprimir</button>
+<button id="printBtn" class="print-btn" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+<script>
+(function(){
+  var btn = document.getElementById('printBtn');
+  if (btn) {
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      try { window.print(); } catch(err) { alert('Não foi possível abrir a impressão automaticamente. Use Ctrl+P (ou Cmd+P no Mac) para imprimir esta página.'); }
+    });
+  }
+})();
+</script>
 <div class="wrap">
 
   <!-- CAPA -->
@@ -1596,7 +1607,7 @@ select option{background:#fff;color:var(--text);}
           <div className="hdr-client">Cliente: <strong>{clientName}</strong></div>
           <div className="status-pill"><span className="sdot" />Sistema Ativo</div>
           <div style={{ fontFamily:"'Poppins',sans-serif", fontSize:9, fontWeight:700, color:'rgba(244,184,0,.7)', background:'rgba(244,184,0,.08)', border:'1px solid rgba(244,184,0,.2)', borderRadius:20, padding:'3px 9px', letterSpacing:'0.5px', whiteSpace:'nowrap' }}>
-            v0.13.2-beta
+            v0.13.3-beta
           </div>
         </div>
       </header>
@@ -1874,7 +1885,7 @@ select option{background:#fff;color:var(--text);}
                           onClick={exportChecklistPDF}
                           disabled={checklistPdfLoading}
                         >
-                          {checklistPdfLoading ? '⏳ Gerando...' : '📋 Gerar Relatório'}
+                          {checklistPdfLoading ? '⏳ Salvando...' : '📋 Salvar Relatório e Documentos'}
                         </button>
                       </div>
                     : <button className="btn btn-pri" onClick={handleNext}>Próximo →</button>
@@ -1897,7 +1908,7 @@ select option{background:#fff;color:var(--text);}
           ) : !reportHtml ? (
             <div className="rp-empty">
               <div className="big-ic">📋</div>
-              <p>Preencha o checklist e clique em <strong>Gerar Relatório</strong> na última etapa.</p>
+              <p>Preencha o checklist e clique em <strong>Salvar Relatório e Documentos</strong> na última etapa.</p>
               <div className="hint">← Volte para o Checklist para começar</div>
             </div>
           ) : (
